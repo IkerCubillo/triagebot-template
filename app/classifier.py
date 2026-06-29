@@ -9,6 +9,10 @@ FALLBACK_CLASSIFICATION = {"category": "question", "priority": "P3", "tags": []}
 
 
 def classify_ticket(title: str, description: str) -> dict:
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        return FALLBACK_CLASSIFICATION
+
     prompt = (
         "Eres un sistema de clasificación de tickets de soporte técnico. "
         "Devuelve EXCLUSIVAMENTE un JSON con tres campos: "
@@ -22,12 +26,13 @@ def classify_ticket(title: str, description: str) -> dict:
     for _ in range(2):
         try:
             client = OpenAI(
-                api_key=os.environ["OPENROUTER_API_KEY"],
+                api_key=api_key,
                 base_url="https://openrouter.ai/api/v1",
             )
             resp = client.chat.completions.create(
                 model="openai/gpt-oss-120b",
                 messages=[{"role": "user", "content": prompt}],
+                max_tokens=1024,
             )
             raw = json.loads(resp.choices[0].message.content)
             if raw.get("category") not in ALLOWED_CATEGORIES:
