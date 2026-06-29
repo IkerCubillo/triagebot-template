@@ -1,5 +1,21 @@
 # DEV_LOG
 
+[2026-06-29 12:30] Añadir GET /tickets/{id} y reorganizar app/main.py
+
+Solicitado: Implementar el endpoint GET /tickets/{id} y reorganizar clases/endpoints en app/main.py.
+
+Implementado:
+- Añadido GET /tickets/{ticket_id}: devuelve 200 con el ticket o 404 si no existe
+- Movida la clase TicketUpdate al inicio del archivo (antes de cualquier endpoint)
+- Endpoints reordenados: POST /tickets → GET /tickets → GET /tickets/{id} → PATCH /tickets/{id}
+
+Decisiones:
+- TicketUpdate se mantiene en main.py (no en models.py) por ser específica del endpoint PATCH; solo se sube al bloque de schemas al inicio del archivo
+- Se reutiliza el patrón session.get(Ticket, ticket_id) ya presente en update_ticket
+
+Archivos tocados: app/main.py
+Tests: 5/5 ✅
+
 [2026-06-29 12:00] Mejoras en app/classifier.py
 
 Solicitado: Implementar/revisar el módulo clasificador según SPEC.md §5 y añadir max_tokens=1024.
