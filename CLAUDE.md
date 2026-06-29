@@ -1,11 +1,5 @@
 # CLAUDE.md
 
-> **Equipo B (Spec-Driven):** este archivo es vuestro. Completadlo con vuestras
-> convenciones como parte del trabajo de hoy — es tan importante como el `SPEC.md`
-> que vais a escribir. Claude Code lo lee automáticamente al abrir el repo.
->
-> **Equipo A (Vibe):** podéis ignorarlo. No estáis obligados a tocarlo.
-
 Este repo es una plantilla docente para construir **TriageBot**, una aplicación
 FastAPI que clasifica tickets de soporte con un LLM (gpt-oss-120b vía OpenRouter).
 
