@@ -1,5 +1,24 @@
 # DEV_LOG
 
+[2026-06-29 13:00] Crear CLASSIFIER_PLAN.md con análisis de mejoras del clasificador
+
+Solicitado: Analizar app/classifier.py y documentar tres opciones de mejora (prompt engineering, parámetros de inferencia, salida estructurada) en CLASSIFIER_PLAN.md.
+
+Implementado:
+- Creado CLASSIFIER_PLAN.md en la raíz con las tres opciones evaluadas
+- Opción A: separación system/user + 3 few-shot de seed_tickets.json con clasificaciones esperadas
+- Opción B: evaluación de temperature=0.0, top_p, seed=42, max_tokens=150 con tabla de soporte OpenRouter
+- Opción C: json_object (v1) y json_schema con schema completo (v2), análisis de impacto en except y FALLBACK_CLASSIFICATION
+- Sección Recomendación: orden B → A → C(v1), justificado como aditivo y sin romper tests
+
+Decisiones:
+- Few-shot seleccionados de seed_tickets.json por cubrir las tres categorías más distintas (urgent/P1, feature_request/P2, question/P3)
+- top_p excluido de la recomendación porque la API de OpenAI desaconseja combinarlo con temperature=0
+- Variante 2 (json_schema) marcada experimental porque gpt-oss-120b es open-source y el soporte de structured outputs vía OpenRouter no está garantizado
+
+Archivos tocados: CLASSIFIER_PLAN.md
+Tests: 5/5 ✅
+
 [2026-06-29 12:30] Añadir GET /tickets/{id} y reorganizar app/main.py
 
 Solicitado: Implementar el endpoint GET /tickets/{id} y reorganizar clases/endpoints en app/main.py.
