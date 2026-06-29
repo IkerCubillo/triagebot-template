@@ -1,7 +1,10 @@
 # CLAUDE.md
 
+<<<<<<< HEAD
+=======
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+>>>>>>> main
 Este repo es una plantilla docente para construir **TriageBot**, una aplicación
 FastAPI que clasifica tickets de soporte con un LLM (`openai/gpt-oss-120b` vía OpenRouter).
 
