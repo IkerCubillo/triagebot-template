@@ -1,5 +1,25 @@
 # DEV_LOG
 
+[2026-06-29 11:30] Implementar GET /tickets/{id} y PATCH /tickets/{id}
+
+Solicitado: Añadir los endpoints GET /tickets/{id} y PATCH /tickets/{id} en app/main.py siguiendo SPEC.md §4.
+
+Implementado:
+- Añadido `TicketUpdate` (BaseModel Pydantic) con campos opcionales `status` y `priority`
+- Importados `HTTPException` y `ALLOWED_PRIORITIES`, `ALLOWED_STATUSES` de models.py
+- Implementado `GET /tickets/{ticket_id}`: busca por id, devuelve 404 si no existe
+- Implementado `PATCH /tickets/{ticket_id}`: valida enums, actualiza solo `status`/`priority`, actualiza `updated_at`, devuelve 404 si no existe y 422 si el valor no pertenece al enum
+
+Decisiones:
+- La validación de enum en PATCH devuelve 422 explícito via HTTPException antes de abrir la sesión DB, para no generar ruido innecesario
+- `updated_at` se actualiza solo cuando hay un cambio efectivo en PATCH, conforme a la spec
+
+Archivos tocados: app/main.py
+
+Tests: 0/5 ❌ (esperado: todos los tests dependen de POST /tickets que aún no está implementado)
+
+---
+
 [2026-06-29 HH:MM] Implementar GET /tickets
 
 Solicitado: Crear el endpoint GET /tickets en app/main.py siguiendo SPEC.md §4, usando el modelo Ticket de §3.
