@@ -56,6 +56,27 @@ Templates:
 
 El prompt debe pedir JSON estricto (sin markdown, sin explicaciones).
 
+## Protocolo de logging
+
+Al terminar cualquier tarea (después de ejecutar los tests), **antes de responder
+al usuario**, añade una entrada al principio de `DEV_LOG.md` con este formato:
+[YYYY-MM-DD HH:MM] <título corto de la tarea>
+Solicitado: <qué se pidió, en una frase>
+
+Implementado:
+<bullet por cada cosa concreta que se hizo>
+
+Decisiones:
+<por qué se tomó cada decisión no obvia>
+
+Archivos tocados: ruta/archivo.py, ...
+Tests: N/5 ✅ / ❌
+
+Si DEV_LOG.md no existe, créalo. Si existe, inserta la nueva entrada al principio
+(después del título H1 si lo tiene).
+
+No pidas confirmación para escribir DEV_LOG.md: es siempre silencioso.
+
 ## Variables de entorno
 
 | Variable | Uso |
