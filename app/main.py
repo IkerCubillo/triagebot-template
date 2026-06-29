@@ -10,6 +10,11 @@ from app.db import get_session, init_db
 from app.models import ALLOWED_PRIORITIES, ALLOWED_STATUSES, Ticket, TicketCreate, TicketResponse
 
 
+class TicketUpdate(BaseModel):
+    status: str | None = None
+    priority: str | None = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -63,9 +68,12 @@ def list_tickets(
     return [TicketResponse.model_validate(t) for t in tickets]
 
 
-class TicketUpdate(BaseModel):
-    status: str | None = None
-    priority: str | None = None
+@app.get("/tickets/{ticket_id}", response_model=TicketResponse)
+def get_ticket(ticket_id: int, session: Session = Depends(get_session)):
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return TicketResponse.model_validate(ticket)
 
 
 @app.patch("/tickets/{ticket_id}", response_model=TicketResponse)
