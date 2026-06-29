@@ -98,6 +98,6 @@ Los detalles obligatorios están en:
 
 Nombres:
 - dev-1: Iker Cubillo
-- dev-2:
+- dev-2: Egoitz Aulestia
 
 Metodología: `Spec-Driven`
