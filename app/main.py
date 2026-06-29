@@ -1,6 +1,22 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
-app = FastAPI(title="TriageBot")
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
+from sqlmodel import Session, select
+
+import app.classifier as classifier
+from app.db import get_session, init_db
+from app.models import ALLOWED_PRIORITIES, ALLOWED_STATUSES, Ticket, TicketCreate, TicketResponse
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="TriageBot", lifespan=lifespan)
 
 
 @app.get("/health")
@@ -8,9 +24,68 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# TODO: implementar durante el bootcamp.
-# Endpoints esperados por los tests:
-# - POST /tickets
-# - GET /tickets
-# - PATCH /tickets/{ticket_id}
-# - GET /
+@app.post("/tickets", status_code=201, response_model=TicketResponse)
+def create_ticket(body: TicketCreate, session: Session = Depends(get_session)):
+    try:
+        cls = classifier.classify_ticket(body.title, body.description)
+    except Exception:
+        cls = classifier.FALLBACK_CLASSIFICATION
+
+    ticket = Ticket(
+        title=body.title,
+        description=body.description,
+        category=cls["category"],
+        priority=cls["priority"],
+        tags=cls["tags"],
+    )
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    return TicketResponse.model_validate(ticket)
+
+
+@app.get("/tickets", response_model=list[TicketResponse])
+def list_tickets(
+    category: str | None = None,
+    priority: str | None = None,
+    status: str | None = None,
+    session: Session = Depends(get_session),
+):
+    query = select(Ticket)
+    if category is not None:
+        query = query.where(Ticket.category == category)
+    if priority is not None:
+        query = query.where(Ticket.priority == priority)
+    if status is not None:
+        query = query.where(Ticket.status == status)
+    query = query.order_by(Ticket.created_at.desc())
+    tickets = session.exec(query).all()
+    return [TicketResponse.model_validate(t) for t in tickets]
+
+
+class TicketUpdate(BaseModel):
+    status: str | None = None
+    priority: str | None = None
+
+
+@app.patch("/tickets/{ticket_id}", response_model=TicketResponse)
+def update_ticket(ticket_id: int, body: TicketUpdate, session: Session = Depends(get_session)):
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if body.status is not None:
+        if body.status not in ALLOWED_STATUSES:
+            raise HTTPException(status_code=422, detail=f"Invalid status: {body.status}")
+        ticket.status = body.status
+
+    if body.priority is not None:
+        if body.priority not in ALLOWED_PRIORITIES:
+            raise HTTPException(status_code=422, detail=f"Invalid priority: {body.priority}")
+        ticket.priority = body.priority
+
+    ticket.updated_at = datetime.now(UTC)
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    return TicketResponse.model_validate(ticket)
