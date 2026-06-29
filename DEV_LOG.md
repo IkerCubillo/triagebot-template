@@ -1,5 +1,20 @@
 # DEV_LOG
 
+[2026-06-29 12:00] Mejoras en app/classifier.py
+
+Solicitado: Implementar/revisar el módulo clasificador según SPEC.md §5 y añadir max_tokens=1024.
+
+Implementado:
+- Early exit cuando OPENROUTER_API_KEY no está definida (evita dos reintentos innecesarios)
+- Añadido max_tokens=1024 a client.chat.completions.create(...)
+
+Decisiones:
+- La clave se lee con os.environ.get() fuera del bucle de reintentos; si es None se retorna FALLBACK_CLASSIFICATION inmediatamente en lugar de dejar que KeyError se propague y consuma los dos intentos
+- max_tokens=1024 es suficiente para el JSON de clasificación y previene completions desbordadas
+
+Archivos tocados: app/classifier.py
+Tests: 5/5 ✅
+
 [2026-06-29 11:30] Implementar GET /tickets/{id} y PATCH /tickets/{id}
 
 Solicitado: Añadir los endpoints GET /tickets/{id} y PATCH /tickets/{id} en app/main.py siguiendo SPEC.md §4.
