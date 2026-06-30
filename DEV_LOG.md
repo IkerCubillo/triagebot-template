@@ -1,5 +1,38 @@
 # DEV_LOG
 
+[2026-06-30 14:35] Frontend paso 10: checks finales — SPEC_FRONTEND completo
+
+Solicitado: Ejecutar el paso 10 (último) de SPEC_FRONTEND_PLAN.md: confirmar
+pytest y ruff en verde, y cerrar el SPEC.
+
+Implementado:
+- `pytest -v` → 10/10 tests passed (9 de tests/test_acceptance.py + 1 de
+  tests/test_extra_validation.py)
+- `ruff check .` → 0 errores
+- Confirmado vía `git diff --stat tests/test_acceptance.py` que el archivo no
+  tiene ningún cambio en todo el trabajo (regla del taller §1 de CLAUDE.md
+  respetada en los 10 pasos)
+- Marcado el paso 10 como hecho, cerrando el checklist completo de
+  SPEC_FRONTEND_PLAN.md (10/10 pasos)
+
+Resumen del SPEC_FRONTEND completo:
+- `app/main.py`: Jinja2Templates configurado, `_query_tickets` y `_create_ticket`
+  extraídas como funciones reutilizables, 3 endpoints HTMX nuevos (`GET /`,
+  `GET /tickets/table`, `POST /tickets/form`) sin tocar los 4 endpoints JSON
+  existentes
+- `templates/index.html`: formulario de creación + 3 filtros + contenedor de
+  tabla, todo conectado vía HTMX, labels en español
+- `templates/_tickets_table.html`: loop Jinja2 con badges de categoría/prioridad/
+  estado traducidos al español, P1 destacado visualmente, chips de tags, estado
+  vacío y mensaje de error
+- Dos bugs de integración detectados y corregidos durante el desarrollo (filtros
+  con valor vacío sin normalizar; status 422 que impedía el swap de HTMX)
+
+Decisiones: ninguna nueva en este paso, es solo el cierre formal.
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, DEV_LOG.md
+Tests: 10/10 ✅, ruff check . ✅ — SPEC_FRONTEND.md cumplido en su totalidad
+
 [2026-06-30 14:25] Frontend paso 9: verificación manual end-to-end
 
 Solicitado: Ejecutar el paso 9 de SPEC_FRONTEND_PLAN.md: verificar el flujo

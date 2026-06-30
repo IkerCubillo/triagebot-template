@@ -86,7 +86,7 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
   ticket desde el formulario, comprobar que aparece sin recargar la página,
   probar los tres filtros, confirmar que P1 destaca visualmente.
 
-- [ ] **10. Checks finales**
+- [x] **10. Checks finales**
   `pytest -v` (debe seguir verde, sin tocar `tests/test_acceptance.py`) y
   `ruff check .` (sin errores). Actualizar `DEV_LOG.md` según el protocolo de
   `CLAUDE.md`.
