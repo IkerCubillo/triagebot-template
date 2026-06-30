@@ -28,7 +28,6 @@ from app.models import (
 
 load_dotenv()
 
-
 class TicketUpdate(BaseModel):
     status: str | None = None
     priority: str | None = None
