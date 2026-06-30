@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="TriageBot", lifespan=lifespan)
+templates = Jinja2Templates(directory="templates")
 
 
 @app.get("/health")
@@ -52,13 +54,12 @@ def create_ticket(body: TicketCreate, session: Session = Depends(get_session)):
     return TicketResponse.model_validate(ticket) 
 
 
-@app.get("/tickets", response_model=list[TicketResponse])
-def list_tickets(
+def _query_tickets(
+    session: Session,
     category: str | None = None,
     priority: str | None = None,
     status: str | None = None,
-    session: Session = Depends(get_session),
-):
+) -> list[Ticket]:
     query = select(Ticket)
     if category is not None:
         query = query.where(Ticket.category == category)
@@ -67,7 +68,17 @@ def list_tickets(
     if status is not None:
         query = query.where(Ticket.status == status)
     query = query.order_by(Ticket.created_at.desc())
-    tickets = session.exec(query).all()
+    return session.exec(query).all()
+
+
+@app.get("/tickets", response_model=list[TicketResponse])
+def list_tickets(
+    category: str | None = None,
+    priority: str | None = None,
+    status: str | None = None,
+    session: Session = Depends(get_session),
+):
+    tickets = _query_tickets(session, category, priority, status)
     return [TicketResponse.model_validate(t) for t in tickets]
 
 

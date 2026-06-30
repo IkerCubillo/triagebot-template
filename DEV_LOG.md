@@ -1,5 +1,50 @@
 # DEV_LOG
 
+[2026-06-30 12:45] Frontend paso 2: extraer lógica de filtrado reutilizable
+
+Solicitado: Ejecutar el paso 2 de SPEC_FRONTEND_PLAN.md: extraer la query de
+filtrado de list_tickets a una función reutilizable para los futuros endpoints
+HTMX (GET / y GET /tickets/table).
+
+Implementado:
+- Añadida función `_query_tickets(session, category, priority, status)` en
+  app/main.py que encapsula el `select(Ticket)` + `.where()` condicionales +
+  `.order_by(Ticket.created_at.desc())` + `.exec().all()`
+- `list_tickets` ahora delega en `_query_tickets` y solo serializa el resultado
+- No se cambió la firma ni el comportamiento de GET /tickets
+
+Decisiones:
+- La función se nombra con prefijo `_` por ser de uso interno del módulo, no un
+  endpoint
+- Se mantiene en app/main.py (no se crea un módulo nuevo) porque el spec pide no
+  introducir arquitectura adicional sin necesidad clara
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, app/main.py, DEV_LOG.md
+Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+
+[2026-06-30 12:30] Frontend paso 1: configurar Jinja2Templates
+
+Solicitado: Crear el plan de implementación del frontend HTMX (SPEC_FRONTEND.md) como
+checklist en SPEC_FRONTEND_PLAN.md y ejecutar el paso 1: dar de alta Jinja2Templates
+en app/main.py.
+
+Implementado:
+- Creado SPEC_FRONTEND_PLAN.md en la raíz con el checklist de 10 pasos adaptado al
+  estado real del código (sustituye el pseudocódigo genérico de SPEC_FRONTEND.md)
+- Añadido import `from fastapi.templating import Jinja2Templates` en app/main.py
+- Añadida instancia `templates = Jinja2Templates(directory="templates")` justo
+  después de `app = FastAPI(...)`
+- Marcado el paso 1 como hecho en SPEC_FRONTEND_PLAN.md
+
+Decisiones:
+- No se añade todavía ningún endpoint (GET /, GET /tickets/table, POST /tickets/form)
+  porque corresponden a pasos posteriores del checklist; este paso solo prepara la
+  infraestructura de templates
+- No se tocan los endpoints JSON existentes ni tests/test_acceptance.py
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, app/main.py
+Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+
 [2026-06-30 12:30] FASE 1 spec — catálogo de tests existentes en SPEC.md
 
 Solicitado: Añadir sección "## 10. Tests" en SPEC.md con los tests ya existentes organizados por caso de uso (nombre, qué cubre, qué bug detectaría). Sin inventar tests nuevos.
