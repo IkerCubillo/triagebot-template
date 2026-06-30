@@ -1,5 +1,22 @@
 # DEV_LOG
 
+[2026-06-30 17:30] Nuevo endpoint GET /tickets/stats
+
+Solicitado: Añadir endpoint JSON que devuelva conteos de tickets por categoría, prioridad y estado.
+
+Implementado:
+- Añadido modelo `TicketStats` (Pydantic) en `app/models.py` con tres campos `dict[str, int]`
+- Importados `ALLOWED_CATEGORIES` y `TicketStats` en `app/main.py`
+- Registrado `GET /tickets/stats` antes de `GET /tickets/{ticket_id}` para que la ruta estática no sea capturada por el parámetro dinámico
+- Los conteos se inicializan a 0 para todos los valores de cada enum, garantizando respuesta estable aunque no haya tickets de algún tipo
+
+Decisiones:
+- El endpoint se coloca ANTES de `GET /tickets/{ticket_id}` porque FastAPI resuelve rutas por orden de registro y "stats" sería interpretado como un ticket_id (int) en caso contrario
+- Se inicializan todos los enum-values a 0 para que la forma de la respuesta sea siempre predecible
+
+Archivos tocados: app/models.py, app/main.py
+Tests: 10/10 ✅
+
 [2026-06-30 16:00] Añadir técnicos/responsables a tickets
 
 Solicitado: Ampliar el modelo de datos con técnicos (uno o varios por ticket), filtrado por técnico en el tablero, selector de técnico activo en el header, gestión de técnicos desde la UI y endpoints de API.

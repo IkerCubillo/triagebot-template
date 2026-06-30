@@ -74,3 +74,9 @@ class TechnicianResponse(BaseModel):
     name: str
     email: str | None
     created_at: datetime
+
+
+class TicketStats(BaseModel):
+    by_category: dict[str, int]
+    by_priority: dict[str, int]
+    by_status: dict[str, int]
