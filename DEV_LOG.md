@@ -1,5 +1,88 @@
 # DEV_LOG
 
+[2026-07-01 12:30] Loading overlay para creación de ticket (llamada LLM)
+
+Solicitado: Popup de carga bloqueante para evitar que el usuario sature de acciones mientras el clasificador IA procesa el ticket.
+
+Implementado:
+- `templates/index.html`: `<style>` con override de `.htmx-indicator` que añade `pointer-events: none` cuando oculto y `pointer-events: auto` cuando visible (el CSS nativo de HTMX no bloquea clics en opacity:0)
+- `templates/index.html`: overlay `#global-loading` con z-index 200 (sobre todos los modales), spinner CSS con `animate-spin` de Tailwind y mensaje explicativo en español
+- `templates/index.html`: formulario de creación de ticket cambia `hx-indicator` de `#table-loading` a `#global-loading` + añade `hx-disabled-elt="find button[type='submit']"` para inhabilitar el botón durante la petición
+
+Decisiones:
+- El overlay solo aplica a la creación de ticket (la única operación lenta por la llamada al LLM); los filtros y la edición desde el popup siguen usando `#table-loading` (texto sutil) porque son operaciones rápidas
+- `hx-disabled-elt` como segunda línea de defensa: aunque el overlay bloquea visualmente, el botón deshabilitado impide reenvíos si el overlay tardase en aparecer
+- `backdrop-blur-sm` para contextualizar visualmente que la app está procesando sin ser demasiado agresivo
+
+Archivos tocados: templates/index.html
+Tests: 10/10 ✅
+
+[2026-07-01 12:00] UI: popup de detalle, selector de técnicos, paginación, modal técnico
+
+Solicitado: Añadir popup de detalle al clicar ticket, edición desde el popup, mover creación de técnicos a modal en cabecera, selector de responsables visual (checkbox cards), y paginación de 20 tickets por página.
+
+Implementado:
+- `app/main.py`: constante `PAGE_SIZE = 20` y helper `_paginate()` para paginar listas de tickets
+- `app/main.py`: `GET /` y `GET /tickets/table` ahora pasan `page`, `total_pages`, `total` al template
+- `app/main.py`: nuevo endpoint `GET /tickets/{ticket_id}/modal` — devuelve `_ticket_modal.html` con info completa del ticket, todos los técnicos y los IDs asignados
+- `app/main.py`: nuevo endpoint `POST /tickets/{ticket_id}/form` — actualiza status/priority/technicians desde form-data y devuelve la tabla actualizada (página 1)
+- `templates/_ticket_modal.html`: nuevo archivo — modal con descripción, metadatos, formulario de edición (prioridad, estado, responsables con checkbox cards)
+- `templates/_tickets_table.html`: filas clickables (`hx-get`, `hx-on::after-request="openTicketModal()"`) y controles de paginación al pie con botones anterior/página/siguiente
+- `templates/index.html`: botón "+ Añadir técnico" en cabecera, modal de creación de técnicos con lista interna, selector de responsables tipo checkbox cards (has-[:checked] Tailwind v3), eliminada sección "Gestión de técnicos" del pie
+
+Decisiones:
+- `POST /tickets/{ticket_id}/form` en lugar de `PATCH` porque HTMX con form-data y método PATCH en algunos navegadores tiene inconsistencias; el endpoint nuevo es exclusivo para el frontend
+- Los endpoints nuevos se declaran antes que `GET /tickets/{ticket_id}` para claridad de routing (FastAPI los distingue por el segmento extra `/modal` y la diferencia de método, pero la posición es más legible)
+- Paginación en Python (slice sobre lista ya filtrada) para simplicidad; con volúmenes grandes se añadiría LIMIT/OFFSET en SQL
+- `has-[:checked]` de Tailwind funciona con el CDN v3 JIT sin configuración adicional
+
+Archivos tocados: app/main.py, templates/index.html, templates/_tickets_table.html, templates/_ticket_modal.html (nuevo)
+Tests: 10/10 ✅
+
+[2026-07-01 01:00] Corrección de bugs detectados en code review (deadline/overdue)
+
+Solicitado: Revisar y corregir los bugs encontrados en el code review de la feature de deadline y filtro "Solo vencidos".
+
+Implementado:
+- `app/main.py`: helper `_now_naive()` que centraliza `datetime.now(UTC).replace(tzinfo=None)`; elimina 5 duplicaciones del patrón en los handlers
+- `app/main.py` `_seed_from_file`: `status_since=created_at.replace(tzinfo=None)` — los timestamps Z-suffix del seed file se almacenaban como tz-aware (CONFIRMADO: seed usa `"2026-03-27T09:42:23Z"`)
+- `app/main.py` `_create_ticket`: `now = _now_naive()` en lugar de `datetime.now(UTC)` — `status_since` y `deadline` ahora ambos naive en memoria y en DB
+- `app/main.py` `update_ticket`: `ticket.status_since = _now_naive()` y `ticket.updated_at = _now_naive()` — consistente con el resto de escrituras
+- `app/main.py` `tickets_table`: `int(technician_id)` envuelto en try/except con `HTTPException(422)` — la old anotación `int | None` de FastAPI validaba automáticamente; la nueva `str | None` no lo hace
+- `app/main.py` `tickets_table`: `now = _now_naive()` capturado una vez y pasado a `_query_tickets(now=now)` y al contexto de template — elimina el skew entre el filtro SQL y el rendering de badges "Vencido"
+- `app/main.py` `_query_tickets`: acepta parámetro `now: datetime | None` opcional; `~Ticket.status.in_(["closed"])` → `Ticket.status != "closed"`
+- `app/db.py` `_get_engine`: `_engine_url = url` ahora se asigna DESPUÉS de `_engine = create_engine(...)` — evita race condition donde un segundo hilo veía la URL asignada pero engine aún None y retornaba None
+
+Decisiones:
+- `_now_naive()` centraliza la lógica de timezone-stripping: un único sitio a cambiar si la estrategia evoluciona (p.ej., migrar a comparaciones tz-aware)
+- NULL deadline en el filtro overdue es correcto per spec: tickets sin deadline no están vencidos
+- `raise ... from exc` en el except para cumplir con ruff B904
+
+Archivos tocados: app/main.py, app/db.py
+Tests: 10/10 ✅
+
+[2026-07-01 00:00] Deadline automático por prioridad + status_since
+
+Solicitado: Añadir fecha límite calculada a partir de la prioridad (P1=hoy, P2=mañana, P3=+2 días) y campo status_since que registra cuándo cambió de estado el ticket; filtro "Solo vencidos" en el tablero.
+
+Implementado:
+- `app/models.py`: campos `deadline: datetime | None` y `status_since: datetime | None` en `Ticket`; ambos expuestos en `TicketResponse`
+- `app/db.py`: función `_migrate_columns` que añade las columnas mediante `ALTER TABLE` en DBs existentes (detecta columnas ausentes vía `PRAGMA table_info`); se llama desde `_get_engine` tras `create_all`
+- `app/main.py`: helper `_calculate_deadline(priority, base)` (P1=0d, P2=1d, P3=2d, end-of-day UTC); `_create_ticket` y `_seed_from_file` ahora poblando `deadline` y `status_since`; `update_ticket` recalcula `deadline` si cambia `priority` y actualiza `status_since` solo si `status` cambia realmente; `_query_tickets` acepta `overdue: str | None` (filtra `deadline < now AND status != closed`); endpoints `/tickets/table`, `/tickets/form` y `/` reciben `now=datetime.now(UTC)` para el template
+- `templates/_tickets_table.html`: nueva columna "Fecha límite" (9 columnas, colspan actualizado de 8 a 9); fila en `bg-red-50` y badge "Vencido" para tickets vencidos; sublínea "desde {fecha}" en celda de estado usando `status_since`
+- `templates/index.html`: nuevo filtro "Vencimiento" (select Todos / Solo vencidos) que envía `overdue=true` a `GET /tickets/table`
+- `SPEC.md` y `SPEC_FRONTEND.md`: actualizados con los nuevos campos y comportamientos
+
+Decisiones:
+- `_migrate_columns` se llama dentro de `_get_engine` (no en `lifespan`) para que los tests con DB temporal también reciban la migración antes de cualquier petición
+- `status_since` solo se actualiza si el valor de `status` realmente cambia, evitando sobrescribir la fecha cuando PATCH no modifica el estado
+- `deadline` se recalcula desde `ticket.created_at` (no desde `now`) cuando cambia la prioridad, para preservar el origen temporal del ticket
+- El filtro overdue usa `str | None` en lugar de `bool` para compatibilidad con HTMX (que envía valores de select como strings vacíos, no como falsy booleans)
+- Filas vencidas usan `bg-red-50` en lugar de `bg-red-100` para no opacar el contraste del resto de badges
+
+Archivos tocados: app/models.py, app/db.py, app/main.py, templates/_tickets_table.html, templates/index.html, SPEC.md, SPEC_FRONTEND.md
+Tests: 10/10 ✅
+
 [2026-06-30 15:00] Seed automático de tickets desde seed_tickets.json
 
 Solicitado: Cargar todos los tickets de seed_tickets.json al arrancar la app,
