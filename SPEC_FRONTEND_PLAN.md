@@ -77,7 +77,7 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
   Labels en español; opción vacía en cada filtro ("Todas las categorías" /
   "Todas las prioridades" / "Todos los estados").
 
-- [ ] **8. Accesibilidad mínima**
+- [x] **8. Accesibilidad mínima**
   `<label>` en cada input/select, `name` correctos para que HTMX envíe los datos,
   badges con texto visible (no solo color).
 

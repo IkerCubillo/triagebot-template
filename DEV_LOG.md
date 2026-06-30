@@ -1,5 +1,26 @@
 # DEV_LOG
 
+[2026-06-30 14:10] Frontend paso 8: accesibilidad mínima (auditoría)
+
+Solicitado: Ejecutar el paso 8 de SPEC_FRONTEND_PLAN.md: verificar accesibilidad
+mínima (labels, name correctos, badges con texto visible).
+
+Implementado:
+- Auditoría de templates/index.html y templates/_tickets_table.html contra los 6
+  puntos de SPEC_FRONTEND.md §10. Resultado: los 6 puntos ya se cumplían gracias
+  al trabajo de los pasos 6 y 7 (labels enlazados por for/id, name correctos en
+  inputs/selects, badges con texto + color, encabezados de tabla claros)
+- No se modificó ningún archivo de código/template, este paso es de verificación
+
+Decisiones:
+- No se introdujeron cambios "por si acaso" (p. ej. scope="col" en los <th>) ya
+  que no son requisito explícito del spec y el principio del proyecto es no añadir
+  alcance no solicitado
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, DEV_LOG.md
+Tests: no aplica (sin cambios de código); el estado verde ya estaba confirmado
+desde el paso 7
+
 [2026-06-30 14:00] Frontend paso 7: completar templates/index.html
 
 Solicitado: Ejecutar el paso 7 de SPEC_FRONTEND_PLAN.md: completar index.html con
