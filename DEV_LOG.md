@@ -1,5 +1,34 @@
 # DEV_LOG
 
+[2026-06-30 15:00] Seed automático de tickets desde seed_tickets.json
+
+Solicitado: Cargar todos los tickets de seed_tickets.json al arrancar la app,
+siguiendo SPEC.md, SPEC_FRONTEND.md y las convenciones de CLAUDE.md.
+
+Implementado:
+- `app/db.py`: añadida función pública `get_engine()` que devuelve el engine
+  SQLite ya inicializado (necesario para obtener una sesión fuera de la inyección
+  de dependencias de FastAPI)
+- `app/main.py`: añadida función `_seed_from_file(session)` que comprueba si la
+  DB está vacía y, si lo está, carga los 100 tickets de seed_tickets.json
+  llamando a `classify_ticket` por cada uno (con fallback si no hay API key)
+  y preservando el `created_at` original del JSON
+- `app/main.py`: actualizado `lifespan` para abrir una sesión y llamar a
+  `_seed_from_file` justo después de `init_db()`
+
+Decisiones:
+- Idempotente: si ya hay tickets en la DB, la función retorna inmediatamente
+  sin tocar nada
+- Se reutiliza `classify_ticket` (con su fallback integrado) en lugar de
+  insertar datos sin clasificar, para que los tickets de demo sean realistas
+  cuando hay `OPENROUTER_API_KEY` y aceptables (question/P3) cuando no la hay
+- En tests la DB temporal está vacía al crear el TestClient, así que el seed
+  se ejecuta con FALLBACK (sin API key); los tests siguen pasando porque
+  ningún ticket de seed coincide con los filtros específicos que usan los tests
+
+Archivos tocados: app/db.py, app/main.py
+Tests: 10/10 ✅
+
 [2026-06-30 14:10] Frontend paso 8: accesibilidad mínima (auditoría)
 
 Solicitado: Ejecutar el paso 8 de SPEC_FRONTEND_PLAN.md: verificar accesibilidad

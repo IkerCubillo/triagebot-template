@@ -1,5 +1,7 @@
+import json
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
@@ -8,7 +10,7 @@ from pydantic import BaseModel, ValidationError
 from sqlmodel import Session, select
 
 import app.classifier as classifier
-from app.db import get_session, init_db
+from app.db import get_engine, get_session, init_db
 from app.models import ALLOWED_PRIORITIES, ALLOWED_STATUSES, Ticket, TicketCreate, TicketResponse
 
 load_dotenv()
@@ -19,9 +21,47 @@ class TicketUpdate(BaseModel):
     priority: str | None = None
 
 
+def _seed_from_file(session: Session) -> None:
+    existing = session.exec(select(Ticket).limit(1)).first()
+    if existing is not None:
+        return
+
+    seed_path = Path(__file__).parent.parent / "seed_tickets.json"
+    if not seed_path.exists():
+        return
+
+    with seed_path.open() as f:
+        items = json.load(f)
+
+    for item in items:
+        try:
+            body = TicketCreate(title=item["title"], description=item["description"])
+        except Exception:
+            continue
+        try:
+            cls = classifier.classify_ticket(body.title, body.description)
+        except Exception:
+            cls = classifier.FALLBACK_CLASSIFICATION
+        created_at = datetime.fromisoformat(item["created_at"])
+        ticket = Ticket(
+            title=body.title,
+            description=body.description,
+            category=cls["category"],
+            priority=cls["priority"],
+            tags=cls["tags"],
+            created_at=created_at,
+            updated_at=created_at,
+        )
+        session.add(ticket)
+
+    session.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    with Session(get_engine()) as session:
+        _seed_from_file(session)
     yield
 
 
