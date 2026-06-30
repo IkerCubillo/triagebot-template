@@ -1,5 +1,40 @@
 # DEV_LOG
 
+[2026-06-30 14:25] Frontend paso 9: verificación manual end-to-end
+
+Solicitado: Ejecutar el paso 9 de SPEC_FRONTEND_PLAN.md: verificar el flujo
+completo (crear ticket, verlo aparecer sin recargar, filtrar, P1 destacado) como
+lo haría un usuario en el navegador.
+
+Implementado: sin navegador real disponible en este entorno, se simuló la
+secuencia completa de acciones con `curl` contra un `uvicorn` real en background.
+Resultado de cada comprobación:
+- a) GET / → 200, contiene `<h1>TriageBot</h1>`, 1 formulario con
+  hx-post="/tickets/form", 4 elementos con hx-get="/tickets/table" (3 selects +
+  botón limpiar), contenedor #tickets-table presente → PASS
+- b) POST /tickets/form crea un ticket identificable → 200, aparece en el HTML
+  de respuesta inmediatamente → PASS
+- c) el ticket creado persiste al volver a pedir GET /tickets/table → PASS
+- d) filtros individuales (category=bug, priority=P1, status=open) devuelven
+  solo filas que cumplen cada filtro, ninguna fuera de criterio → PASS
+- e) combinación de filtros (priority=P1&status=open) aplica AND correctamente
+  (3 filas, todas P1) → PASS
+- f) las filas P1 llevan las clases de destacado (ring-red-300 font-semibold),
+  P2/P3 no → PASS
+- g) GET /tickets y POST /tickets (JSON) sin cambios de contrato tras los pasos
+  1-8 → PASS
+
+Decisiones:
+- No se tocó ningún archivo de código/template, este paso es de verificación
+- Se recomienda al usuario una confirmación visual final en navegador real
+  (`http://localhost:8000/`) para validar aspectos que curl no puede certificar
+  (que se vea bien, que el clic responda), aunque toda la lógica funcional ya
+  está confirmada
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, DEV_LOG.md
+Tests: 7/7 comprobaciones manuales ✅ (sin tests automatizados nuevos; pytest no
+se re-ejecutó porque no hubo cambios de código en este paso)
+
 [2026-06-30 14:10] Frontend paso 8: accesibilidad mínima (auditoría)
 
 Solicitado: Ejecutar el paso 8 de SPEC_FRONTEND_PLAN.md: verificar accesibilidad

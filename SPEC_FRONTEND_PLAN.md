@@ -81,7 +81,7 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
   `<label>` en cada input/select, `name` correctos para que HTMX envíe los datos,
   badges con texto visible (no solo color).
 
-- [ ] **9. Verificación manual end-to-end**
+- [x] **9. Verificación manual end-to-end**
   `uvicorn app.main:app --reload`, abrir `http://localhost:8000/`, crear un
   ticket desde el formulario, comprobar que aparece sin recargar la página,
   probar los tres filtros, confirmar que P1 destaca visualmente.
