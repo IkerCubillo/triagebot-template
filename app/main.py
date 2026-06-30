@@ -1,5 +1,7 @@
+import json
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
@@ -8,8 +10,9 @@ from pydantic import BaseModel, ValidationError
 from sqlmodel import Session, select
 
 import app.classifier as classifier
-from app.db import get_session, init_db
+from app.db import get_engine, get_session, init_db
 from app.models import (
+    ALLOWED_CATEGORIES,
     ALLOWED_PRIORITIES,
     ALLOWED_STATUSES,
     Technician,
@@ -18,12 +21,12 @@ from app.models import (
     Ticket,
     TicketCreate,
     TicketResponse,
+    TicketStats,
     TicketTechnician,
     compute_deadline,
 )
 
 load_dotenv()
-
 
 class TicketUpdate(BaseModel):
     status: str | None = None
@@ -31,9 +34,47 @@ class TicketUpdate(BaseModel):
     technician_ids: list[int] | None = None
 
 
+def _seed_from_file(session: Session) -> None:
+    existing = session.exec(select(Ticket).limit(1)).first()
+    if existing is not None:
+        return
+
+    seed_path = Path(__file__).parent.parent / "seed_tickets.json"
+    if not seed_path.exists():
+        return
+
+    with seed_path.open() as f:
+        items = json.load(f)
+
+    for item in items:
+        try:
+            body = TicketCreate(title=item["title"], description=item["description"])
+        except Exception:
+            continue
+        try:
+            cls = classifier.classify_ticket(body.title, body.description)
+        except Exception:
+            cls = classifier.FALLBACK_CLASSIFICATION
+        created_at = datetime.fromisoformat(item["created_at"])
+        ticket = Ticket(
+            title=body.title,
+            description=body.description,
+            category=cls["category"],
+            priority=cls["priority"],
+            tags=cls["tags"],
+            created_at=created_at,
+            updated_at=created_at,
+        )
+        session.add(ticket)
+
+    session.commit()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    with Session(get_engine()) as session:
+        _seed_from_file(session)
     yield
 
 
@@ -297,6 +338,25 @@ def list_tickets(
 ):
     tickets = _query_tickets(session, category, priority, status, overdue_only=overdue_only)
     return [_ticket_to_response(t, session) for t in tickets]
+
+
+@app.get("/tickets/stats", response_model=TicketStats)
+def get_ticket_stats(session: Session = Depends(get_session)):
+    tickets = session.exec(select(Ticket)).all()
+
+    by_category = {cat: 0 for cat in ALLOWED_CATEGORIES}
+    by_priority = {prio: 0 for prio in ALLOWED_PRIORITIES}
+    by_status = {st: 0 for st in ALLOWED_STATUSES}
+
+    for t in tickets:
+        if t.category in by_category:
+            by_category[t.category] += 1
+        if t.priority in by_priority:
+            by_priority[t.priority] += 1
+        if t.status in by_status:
+            by_status[t.status] += 1
+
+    return TicketStats(by_category=by_category, by_priority=by_priority, by_status=by_status)
 
 
 @app.get("/tickets/{ticket_id}", response_model=TicketResponse)

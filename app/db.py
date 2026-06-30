@@ -21,6 +21,10 @@ def init_db() -> None:
     _get_engine()
 
 
+def get_engine():
+    return _get_engine()
+
+
 def get_session() -> Generator[Session, None, None]:
     with Session(_get_engine()) as session:
         yield session
