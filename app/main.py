@@ -83,7 +83,6 @@ def create_ticket_form(
                 "tickets": tickets,
                 "error": "No se ha podido crear el ticket. Revisa el título y la descripción.",
             },
-            status_code=422,
         )
 
     _create_ticket(body, session)
@@ -129,7 +128,7 @@ def tickets_table(
     status: str | None = None,
     session: Session = Depends(get_session),
 ):
-    tickets = _query_tickets(session, category, priority, status)
+    tickets = _query_tickets(session, category or None, priority or None, status or None)
     return templates.TemplateResponse(
         "_tickets_table.html", {"request": request, "tickets": tickets}
     )

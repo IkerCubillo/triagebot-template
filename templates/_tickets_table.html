@@ -1,3 +1,36 @@
+{% set priority_styles = {
+  "P1": "bg-red-100 text-red-800 ring-1 ring-red-300 font-semibold",
+  "P2": "bg-amber-100 text-amber-800",
+  "P3": "bg-slate-100 text-slate-700",
+} %}
+{% set priority_labels = {"P1": "P1 · Alta", "P2": "P2 · Media", "P3": "P3 · Normal"} %}
+
+{% set category_styles = {
+  "bug": "bg-red-50 text-red-700",
+  "feature_request": "bg-blue-50 text-blue-700",
+  "question": "bg-purple-50 text-purple-700",
+  "urgent": "bg-orange-100 text-orange-800",
+} %}
+{% set category_labels = {
+  "bug": "Error",
+  "feature_request": "Nueva funcionalidad",
+  "question": "Consulta",
+  "urgent": "Urgente",
+} %}
+
+{% set status_styles = {
+  "open": "bg-blue-50 text-blue-700",
+  "in_progress": "bg-amber-100 text-amber-800",
+  "closed": "bg-green-100 text-green-800",
+} %}
+{% set status_labels = {"open": "Abierto", "in_progress": "En progreso", "closed": "Cerrado"} %}
+
+{% if error %}
+<div class="mb-3 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+  {{ error }}
+</div>
+{% endif %}
+
 <table class="min-w-full divide-y divide-slate-200 bg-white shadow-sm ring-1 ring-slate-200 rounded-lg overflow-hidden">
   <thead class="bg-slate-100">
     <tr>
@@ -11,6 +44,40 @@
     </tr>
   </thead>
   <tbody id="tickets-table-body">
-    <!-- TODO: renderizar tickets con Jinja2 -->
+    {% if tickets %}
+      {% for ticket in tickets %}
+      <tr class="border-t border-slate-100 hover:bg-slate-50">
+        <td class="px-3 py-2 text-sm text-slate-500">{{ ticket.id }}</td>
+        <td class="px-3 py-2 text-sm font-medium text-slate-900">{{ ticket.title }}</td>
+        <td class="px-3 py-2 text-sm">
+          <span class="inline-block rounded-full px-2 py-0.5 text-xs {{ category_styles.get(ticket.category, 'bg-slate-100 text-slate-700') }}">
+            {{ category_labels.get(ticket.category, ticket.category) }}
+          </span>
+        </td>
+        <td class="px-3 py-2 text-sm">
+          <span class="inline-block rounded-full px-2 py-0.5 text-xs {{ priority_styles.get(ticket.priority, 'bg-slate-100 text-slate-700') }}">
+            {{ priority_labels.get(ticket.priority, ticket.priority) }}
+          </span>
+        </td>
+        <td class="px-3 py-2 text-sm">
+          {% for tag in ticket.tags %}
+            <span class="inline-block mr-1 mb-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ tag }}</span>
+          {% endfor %}
+        </td>
+        <td class="px-3 py-2 text-sm">
+          <span class="inline-block rounded-full px-2 py-0.5 text-xs {{ status_styles.get(ticket.status, 'bg-slate-100 text-slate-700') }}">
+            {{ status_labels.get(ticket.status, ticket.status) }}
+          </span>
+        </td>
+        <td class="px-3 py-2 text-sm text-slate-500">{{ ticket.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan="7" class="px-6 py-8 text-center text-sm text-slate-500">
+          Todavía no hay tickets.<br>Crea el primer ticket para empezar.
+        </td>
+      </tr>
+    {% endif %}
   </tbody>
 </table>

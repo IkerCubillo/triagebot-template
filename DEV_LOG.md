@@ -1,5 +1,76 @@
 # DEV_LOG
 
+[2026-06-30 14:00] Frontend paso 7: completar templates/index.html
+
+Solicitado: Ejecutar el paso 7 de SPEC_FRONTEND_PLAN.md: completar index.html con
+el formulario de creación, los filtros y el contenedor que incluye la tabla,
+conectando todo lo construido en los pasos 1-6.
+
+Implementado:
+- Reescrito templates/index.html: card "Crear ticket" (title + description +
+  botón) con hx-post="/tickets/form", bloque de filtros (3 selects category/
+  priority/status) con hx-get="/tickets/table", botón "Limpiar filtros", indicador
+  de carga simple (.htmx-indicator), y `<div id="tickets-table">` con
+  `{% include "_tickets_table.html" %}`
+- Detectados y corregidos dos bugs de integración al conectar HTML real con HTMX:
+  1. `tickets_table` (app/main.py): los `<select>` con opción "Todas..." envían
+     `category=""` (no ausente), y `_query_tickets` solo trataba `None` como "sin
+     filtro". Se normaliza `category or None` / `priority or None` / `status or
+     None` en la llamada
+  2. `create_ticket_form` (app/main.py): el fragmento de error devolvía
+     `status_code=422`, pero HTMX por defecto no hace swap del DOM en respuestas
+     no-2xx (solo dispara `htmx:responseError`), así que el mensaje de error nunca
+     se vería en el navegador real. Se quitó el `status_code=422` (queda 200)
+
+Decisiones:
+- El botón "Limpiar filtros" es `type="reset"` + `hx-get="/tickets/table"` SIN
+  `hx-include`, para no depender del orden entre el reset nativo del navegador y
+  la lectura de valores por HTMX
+- `hx-on::after-request="this.reset()"` limpia el formulario de creación tras
+  cualquier respuesta; los atributos `required`/`maxlength` HTML ya bloquean en
+  el navegador el envío de campos vacíos antes de llegar al servidor
+- No se tocó `GET /tickets`, `POST /tickets` ni el resto de endpoints JSON
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, templates/index.html, app/main.py,
+DEV_LOG.md
+Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+Verificación manual: GET /tickets/table?category= devuelve todos los tickets (no
+vacío); POST /tickets/form con datos vacíos → 200 con mensaje de error visible;
+crear ticket vía form → aparece en el tablero; GET / devuelve página completa con
+formulario y filtros conectados a HTMX
+
+[2026-06-30 13:45] Frontend paso 6: completar templates/_tickets_table.html
+
+Solicitado: Ejecutar el paso 6 de SPEC_FRONTEND_PLAN.md: completar el renderizado
+real de la tabla de tickets con Jinja2, badges, chips de tags y estado vacío.
+
+Implementado:
+- Reescrito templates/_tickets_table.html completo: loop Jinja2 sobre `tickets` en
+  el `<tbody>`, sustituyendo el TODO
+- Diccionarios Jinja2 (`{% set %}`) para traducir category/priority/status a texto
+  en español y aplicar clases Tailwind de color (badge)
+- P1 destaca visualmente con fondo rojo, anillo y negrita frente a P2 (ámbar) y P3
+  (gris)
+- Chips individuales para cada tag de `ticket.tags`
+- Estado vacío ("Todavía no hay tickets. Crea el primer ticket para empezar.")
+  cuando `tickets` está vacío
+- Renderizado del mensaje de `error` (pasado desde POST /tickets/form en el paso 5)
+  en un `<div>` visible antes de la tabla
+
+Decisiones:
+- Los badges siempre muestran texto además del color, para no depender solo del
+  color (requisito de accesibilidad del spec)
+- Se usan dict.get(...) en Jinja2 con un fallback al valor crudo del enum, para que
+  un valor inesperado no rompa el render
+- `ticket.created_at.strftime(...)` funciona porque `_query_tickets` devuelve
+  objetos `Ticket` (SQLModel) reales, no JSON serializado
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, templates/_tickets_table.html, DEV_LOG.md
+Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+Verificación manual: GET /tickets/table renderiza filas reales con badges/chips;
+filtro status=closed sigue funcionando; POST /tickets/form con datos vacíos
+muestra el mensaje de error visible en el fragmento (422)
+
 [2026-06-30 13:30] Frontend paso 5: crear POST /tickets/form
 
 Solicitado: Ejecutar el paso 5 de SPEC_FRONTEND_PLAN.md: crear el endpoint
