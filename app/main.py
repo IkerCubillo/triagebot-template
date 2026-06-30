@@ -1,6 +1,6 @@
 import json
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -63,6 +63,8 @@ def _seed_from_file(session: Session) -> None:
             tags=cls["tags"],
             created_at=created_at,
             updated_at=created_at,
+            deadline=_calculate_deadline(cls["priority"], created_at),
+            status_since=created_at.replace(tzinfo=None),
         )
         session.add(ticket)
 
@@ -135,6 +137,21 @@ def _all_technicians(session: Session) -> list[Technician]:
 
 
 # ---------------------------------------------------------------------------
+# Helpers — deadline
+# ---------------------------------------------------------------------------
+
+def _now_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _calculate_deadline(priority: str, base: datetime) -> datetime:
+    days = {"P1": 0, "P2": 1, "P3": 2}.get(priority, 2)
+    d = base + timedelta(days=days)
+    # Strip timezone: SQLite returns naive datetimes, keep consistent
+    return d.replace(hour=23, minute=59, second=59, microsecond=0, tzinfo=None)
+
+
+# ---------------------------------------------------------------------------
 # Helpers — tickets
 # ---------------------------------------------------------------------------
 
@@ -144,12 +161,15 @@ def _create_ticket(body: TicketCreate, session: Session) -> Ticket:
     except Exception:
         cls = classifier.FALLBACK_CLASSIFICATION
 
+    now = _now_naive()
     ticket = Ticket(
         title=body.title,
         description=body.description,
         category=cls["category"],
         priority=cls["priority"],
         tags=cls["tags"],
+        deadline=_calculate_deadline(cls["priority"], now),
+        status_since=now,
     )
     session.add(ticket)
     session.commit()
@@ -167,6 +187,8 @@ def _query_tickets(
     priority: str | None = None,
     status: str | None = None,
     technician_id: int | None = None,
+    overdue: str | None = None,
+    now: datetime | None = None,
 ) -> list[Ticket]:
     query = select(Ticket)
     if category is not None:
@@ -178,6 +200,10 @@ def _query_tickets(
     if technician_id is not None:
         query = query.join(TicketTechnician, Ticket.id == TicketTechnician.ticket_id)
         query = query.where(TicketTechnician.technician_id == technician_id)
+    if overdue == "true":
+        _now = now if now is not None else _now_naive()
+        query = query.where(Ticket.deadline < _now)
+        query = query.where(Ticket.status != "closed")
     query = query.order_by(Ticket.created_at.desc())
     return session.exec(query).all()
 
@@ -188,6 +214,7 @@ def _query_tickets(
 
 @app.get("/")
 def index(request: Request, session: Session = Depends(get_session)):
+    now = _now_naive()
     tickets = _query_tickets(session)
     return templates.TemplateResponse(
         "index.html",
@@ -196,6 +223,7 @@ def index(request: Request, session: Session = Depends(get_session)):
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
             "all_technicians": _all_technicians(session),
+            "now": now,
         },
     )
 
@@ -206,15 +234,23 @@ def tickets_table(
     category: str | None = None,
     priority: str | None = None,
     status: str | None = None,
-    technician_id: int | None = None,
+    technician_id: str | None = None,
+    overdue: str | None = None,
     session: Session = Depends(get_session),
 ):
+    try:
+        tid = int(technician_id) if technician_id else None
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="technician_id must be an integer") from exc
+    now = _now_naive()
     tickets = _query_tickets(
         session,
         category or None,
         priority or None,
         status or None,
-        technician_id or None,
+        tid,
+        overdue or None,
+        now=now,
     )
     return templates.TemplateResponse(
         "_tickets_table.html",
@@ -222,6 +258,7 @@ def tickets_table(
             "request": request,
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
+            "now": now,
         },
     )
 
@@ -234,6 +271,7 @@ def create_ticket_form(
     technician_ids: list[int] = Form(default=[]),
     session: Session = Depends(get_session),
 ):
+    now = _now_naive()
     try:
         body = TicketCreate(title=title, description=description, technician_ids=technician_ids)
     except ValidationError:
@@ -245,6 +283,7 @@ def create_ticket_form(
                 "tickets": tickets,
                 "ticket_technicians": _build_ticket_technicians(session, tickets),
                 "error": "No se ha podido crear el ticket. Revisa el título y la descripción.",
+                "now": now,
             },
         )
 
@@ -256,6 +295,7 @@ def create_ticket_form(
             "request": request,
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
+            "now": now,
         },
     )
 
@@ -353,14 +393,18 @@ def update_ticket(ticket_id: int, body: TicketUpdate, session: Session = Depends
     if body.status is not None:
         if body.status not in ALLOWED_STATUSES:
             raise HTTPException(status_code=422, detail=f"Invalid status: {body.status}")
+        if ticket.status != body.status:
+            ticket.status_since = _now_naive()
         ticket.status = body.status
 
     if body.priority is not None:
         if body.priority not in ALLOWED_PRIORITIES:
             raise HTTPException(status_code=422, detail=f"Invalid priority: {body.priority}")
+        if ticket.priority != body.priority:
+            ticket.deadline = _calculate_deadline(body.priority, ticket.created_at)
         ticket.priority = body.priority
 
-    ticket.updated_at = datetime.now(UTC)
+    ticket.updated_at = _now_naive()
     session.add(ticket)
     session.commit()
     session.refresh(ticket)

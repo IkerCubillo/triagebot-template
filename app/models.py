@@ -20,6 +20,8 @@ class Ticket(SQLModel, table=True):
     status: str = "open"
     created_at: datetime = SQLField(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = SQLField(default_factory=lambda: datetime.now(UTC))
+    deadline: datetime | None = SQLField(default=None)
+    status_since: datetime | None = SQLField(default=None)
 
 
 class Technician(SQLModel, table=True):
@@ -60,6 +62,8 @@ class TicketResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     technician_ids: list[int] = []
+    deadline: datetime | None = None
+    status_since: datetime | None = None
 
 
 class TechnicianCreate(BaseModel):

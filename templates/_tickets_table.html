@@ -38,6 +38,7 @@
       <th class="px-3 py-2 text-left text-sm font-semibold">Título</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Categoría</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Prioridad</th>
+      <th class="px-3 py-2 text-left text-sm font-semibold">Fecha límite</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Tags</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Estado</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Responsables</th>
@@ -47,7 +48,8 @@
   <tbody id="tickets-table-body">
     {% if tickets %}
       {% for ticket in tickets %}
-      <tr class="border-t border-slate-100 hover:bg-slate-50">
+      {% set is_overdue = ticket.deadline and ticket.deadline < now and ticket.status != "closed" %}
+      <tr class="border-t border-slate-100 {{ 'bg-red-50 hover:bg-red-100' if is_overdue else 'hover:bg-slate-50' }}">
         <td class="px-3 py-2 text-sm text-slate-500">{{ ticket.id }}</td>
         <td class="px-3 py-2 text-sm font-medium text-slate-900">{{ ticket.title }}</td>
         <td class="px-3 py-2 text-sm">
@@ -61,6 +63,18 @@
           </span>
         </td>
         <td class="px-3 py-2 text-sm">
+          {% if ticket.deadline %}
+            <span class="{{ 'text-red-600 font-semibold' if is_overdue else 'text-slate-500' }}">
+              {{ ticket.deadline.strftime("%d/%m/%Y") }}
+            </span>
+            {% if is_overdue %}
+              <span class="ml-1 inline-block rounded-full bg-red-100 px-1.5 py-0.5 text-xs text-red-700">Vencido</span>
+            {% endif %}
+          {% else %}
+            <span class="text-slate-400">—</span>
+          {% endif %}
+        </td>
+        <td class="px-3 py-2 text-sm">
           {% for tag in ticket.tags %}
             <span class="inline-block mr-1 mb-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ tag }}</span>
           {% endfor %}
@@ -69,6 +83,9 @@
           <span class="inline-block rounded-full px-2 py-0.5 text-xs {{ status_styles.get(ticket.status, 'bg-slate-100 text-slate-700') }}">
             {{ status_labels.get(ticket.status, ticket.status) }}
           </span>
+          {% if ticket.status_since %}
+            <div class="mt-0.5 text-xs text-slate-400">desde {{ ticket.status_since.strftime("%d/%m/%Y") }}</div>
+          {% endif %}
         </td>
         <td class="px-3 py-2 text-sm">
           {% set names = ticket_technicians.get(ticket.id, []) if ticket_technicians is defined else [] %}
@@ -88,7 +105,7 @@
       {% endfor %}
     {% else %}
       <tr>
-        <td colspan="8" class="px-6 py-8 text-center text-sm text-slate-500">
+        <td colspan="9" class="px-6 py-8 text-center text-sm text-slate-500">
           Todavía no hay tickets.<br>Crea el primer ticket para empezar.
         </td>
       </tr>

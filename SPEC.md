@@ -55,9 +55,13 @@ Una sola entidad: `Ticket`.
 | `status` | str | Uno de: `open`, `in_progress`, `closed`. Default: `open` |
 | `created_at` | datetime | UTC, generado en servidor |
 | `updated_at` | datetime | UTC, actualizado en cambios relevantes |
+| `deadline` | datetime \| None | UTC end-of-day. Calculado al crear: P1=hoy, P2=mañana, P3=+2 días. Se recalcula si cambia `priority` vía PATCH |
+| `status_since` | datetime \| None | UTC. Registra cuándo cambió `status` por última vez. Actualizado solo cuando el valor de `status` cambia realmente |
 
 `category`, `priority` y `tags` los rellena el clasificador (sección 5) en el
 momento de crear el ticket.
+
+> **Vencimiento.** Un ticket se considera **vencido** cuando `deadline < now()` y `status != "closed"`. El tablero lo señala visualmente y el filtro `overdue=true` en `GET /tickets/table` permite ver solo los vencidos.
 
 > **Los enums son vinculantes.** Si vuestro código devuelve `"URGENT"` en
 > mayúsculas o un valor fuera de la lista, los tests fallan.
@@ -127,6 +131,9 @@ Devuelve un ticket por id.
 
 Actualiza **solo** `status` o `priority`. El resto de campos son inmutables tras
 la creación.
+
+- Cambiar `priority` recalcula `deadline` (tomando `created_at` como referencia).
+- Cambiar `status` actualiza `status_since` (solo si el valor cambia realmente).
 
 **Request body**:
 ```json

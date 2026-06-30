@@ -137,6 +137,18 @@
             <option value="closed">Cerrado</option>
           </select>
         </div>
+        <div>
+          <label for="filter-overdue" class="block text-sm font-medium text-slate-700">Vencimiento</label>
+          <select
+            id="filter-overdue" name="overdue"
+            class="mt-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            hx-get="/tickets/table" hx-trigger="change" hx-include="#ticket-filters"
+            hx-target="#tickets-table" hx-swap="innerHTML" hx-indicator="#table-loading"
+          >
+            <option value="">Todos</option>
+            <option value="true">Solo vencidos</option>
+          </select>
+        </div>
         <button
           type="reset"
           hx-get="/tickets/table" hx-target="#tickets-table" hx-swap="innerHTML" hx-indicator="#table-loading"

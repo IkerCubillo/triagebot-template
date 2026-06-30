@@ -145,19 +145,21 @@ Campos obligatorios visibles:
 - `title`
 - `category`
 - `priority`
+- `deadline` — con badge "Vencido" en rojo si el ticket está vencido y no cerrado
 - `tags`
-- `status`
+- `status` — con sublínea "desde {fecha}" usando `status_since`
 - `created_at`
 
 El tablero no puede ser una tabla sin formato. Debe tener una presentación visual mínima con Tailwind.
 
 ### 3.3 Filtros encima del tablero
 
-Debe haber tres filtros:
+Debe haber cuatro filtros:
 
 - `category`
 - `priority`
 - `status`
+- `overdue` — select con opciones "Todos" / "Solo vencidos" (envía `overdue=true` a `GET /tickets/table`)
 
 Cada filtro debe ser un `<select>`.
 
@@ -589,6 +591,10 @@ Los valores internos del backend no deben cambiar, pero la UI puede mostrarlos d
 | `open` | `Abierto` |
 | `in_progress` | `En progreso` |
 | `closed` | `Cerrado` |
+
+#### Vencimiento (deadline)
+
+Un ticket es **vencido** cuando `deadline < ahora` y `status != "closed"`. El tablero lo señala con fila en rojo suave y badge "Vencido". El filtro "Solo vencidos" muestra solo estos tickets.
 
 ---
 
