@@ -67,6 +67,25 @@ Decisiones:
 Archivos tocados: SPEC_FRONTEND_PLAN.md, DEV_LOG.md
 Tests: 7/7 comprobaciones manuales ✅ (sin tests automatizados nuevos; pytest no
 se re-ejecutó porque no hubo cambios de código en este paso)
+[2026-06-30 16:00] Añadir técnicos/responsables a tickets
+
+Solicitado: Ampliar el modelo de datos con técnicos (uno o varios por ticket), filtrado por técnico en el tablero, selector de técnico activo en el header, gestión de técnicos desde la UI y endpoints de API.
+
+Implementado:
+- `app/models.py`: nuevos modelos `Technician` (tabla SQLite), `TicketTechnician` (tabla de enlace many-to-many), `TechnicianCreate`, `TechnicianResponse`; `TicketCreate` acepta `technician_ids: list[int] = []` (opcional, retrocompatible); `TicketResponse` incluye `technician_ids: list[int] = []`.
+- `app/main.py`: helpers `_get_technician_ids`, `_set_technicians`, `_build_ticket_technicians`, `_ticket_to_response`; `_create_ticket` asigna técnicos tras el commit; `_query_tickets` acepta `technician_id` con join a `TicketTechnician`; `TicketUpdate` acepta `technician_ids`; endpoints JSON actualizados a `_ticket_to_response`; nuevos endpoints `POST /technicians` (JSON), `GET /technicians` (JSON), `POST /technicians/form` (HTMX).
+- `templates/index.html`: selector "Técnico activo" en header top-right (incluido en `#ticket-filters`, filtra tabla al cambiar); multi-select de responsables en formulario de creación; card "Gestión de técnicos" con formulario HTMX para añadir técnicos y lista en vivo.
+- `templates/_tickets_table.html`: columna "Responsables" con chips indigo por técnico asignado; colspan 7→8.
+- `templates/_technicians_list.html`: nuevo partial para lista de técnicos (usado por HTMX en la sección de gestión).
+
+Decisiones:
+- Many-to-many via tabla enlace (`TicketTechnician`) en lugar de JSON array en el ticket, para mantener integridad referencial.
+- `technician_ids` opcional con default `[]` en `TicketCreate` y `TicketResponse` para no romper ningún test existente.
+- `_build_ticket_technicians` usa exactamente 2 queries para cualquier número de tickets (eficiencia).
+- Selector de técnico vinculado al formulario `#ticket-filters` con `form="ticket-filters"` para que `hx-include="#ticket-filters"` lo capture automáticamente sin duplicar lógica HTMX.
+
+Archivos tocados: app/models.py, app/main.py, templates/index.html, templates/_tickets_table.html, templates/_technicians_list.html (nuevo)
+Tests: 10/10 ✅
 
 [2026-06-30 14:10] Frontend paso 8: accesibilidad mínima (auditoría)
 
@@ -283,6 +302,22 @@ Decisiones:
 
 Archivos tocados: SPEC_FRONTEND_PLAN.md, app/main.py
 Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+
+[2026-06-30 12:30] FASE 1 spec — catálogo de tests existentes en SPEC.md
+
+Solicitado: Añadir sección "## 10. Tests" en SPEC.md con los tests ya existentes organizados por caso de uso (nombre, qué cubre, qué bug detectaría). Sin inventar tests nuevos.
+
+Implementado:
+- Añadida sección `## 10. Tests` al final de `SPEC.md` via Write (el archivo no tenía newline final, lo que hacía fallar Edit)
+- Documentados los 10 tests existentes en 4 casos de uso: UC-1 POST /tickets (4 tests), UC-2 GET /tickets (2 tests), UC-3 GET /tickets/{id} (2 tests), UC-4 PATCH /tickets/{id} (3 tests)
+- Cada entrada incluye archivo fuente, qué comportamiento cubre y qué regresión detectaría
+
+Decisiones:
+- `test_update_ticket_and_filter_by_status_priority_category` aparece en UC-2 y UC-4 porque el test cubre ambos endpoints en un solo flujo
+- Write en lugar de Edit porque el archivo terminaba sin `\n` y el anchor del Edit no encontraba el texto final
+
+Archivos tocados: SPEC.md
+Tests: N/A (fase spec, sin ejecución de código)
 
 [2026-06-30 11:45] Guardia CI: .env no commiteado
 

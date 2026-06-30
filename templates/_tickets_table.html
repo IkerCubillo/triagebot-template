@@ -40,6 +40,7 @@
       <th class="px-3 py-2 text-left text-sm font-semibold">Prioridad</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Tags</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Estado</th>
+      <th class="px-3 py-2 text-left text-sm font-semibold">Responsables</th>
       <th class="px-3 py-2 text-left text-sm font-semibold">Creado</th>
     </tr>
   </thead>
@@ -69,12 +70,25 @@
             {{ status_labels.get(ticket.status, ticket.status) }}
           </span>
         </td>
+        <td class="px-3 py-2 text-sm">
+          {% set names = ticket_technicians.get(ticket.id, []) if ticket_technicians is defined else [] %}
+          {% if names %}
+            {% for name in names %}
+              <span class="inline-flex items-center gap-1 mr-1 mb-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">
+                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-indigo-200 text-xs font-bold">{{ name[0]|upper }}</span>
+                {{ name }}
+              </span>
+            {% endfor %}
+          {% else %}
+            <span class="text-xs text-slate-400">—</span>
+          {% endif %}
+        </td>
         <td class="px-3 py-2 text-sm text-slate-500">{{ ticket.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
       </tr>
       {% endfor %}
     {% else %}
       <tr>
-        <td colspan="7" class="px-6 py-8 text-center text-sm text-slate-500">
+        <td colspan="8" class="px-6 py-8 text-center text-sm text-slate-500">
           Todavía no hay tickets.<br>Crea el primer ticket para empezar.
         </td>
       </tr>
