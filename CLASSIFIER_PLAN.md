@@ -259,4 +259,4 @@ Implementar las tres opciones en este orden:
 
 3. **Opción C variante 1** (json_object): añadir `response_format={"type": "json_object"}` como capa de seguridad adicional. No implementar variante 2 hasta confirmar soporte de OpenRouter para `gpt-oss-120b` mediante una prueba empírica.
 
-La combinación B+A+C(v1) es aditiva: cada capa refuerza a la anterior sin modificar la firma pública de `classify_ticket(title, description) -> dict` ni romper ningún test de aceptación.
+La combinación B+A+C(v1) es aditiva: cada capa refuerza a la anterior sin modificar la firma pública de `classify_ticket(title, description) -> dict` ni romper ningún test de aceptación. 
