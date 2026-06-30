@@ -1,5 +1,27 @@
 # DEV_LOG
 
+[2026-07-01 12:00] UI: popup de detalle, selector de técnicos, paginación, modal técnico
+
+Solicitado: Añadir popup de detalle al clicar ticket, edición desde el popup, mover creación de técnicos a modal en cabecera, selector de responsables visual (checkbox cards), y paginación de 20 tickets por página.
+
+Implementado:
+- `app/main.py`: constante `PAGE_SIZE = 20` y helper `_paginate()` para paginar listas de tickets
+- `app/main.py`: `GET /` y `GET /tickets/table` ahora pasan `page`, `total_pages`, `total` al template
+- `app/main.py`: nuevo endpoint `GET /tickets/{ticket_id}/modal` — devuelve `_ticket_modal.html` con info completa del ticket, todos los técnicos y los IDs asignados
+- `app/main.py`: nuevo endpoint `POST /tickets/{ticket_id}/form` — actualiza status/priority/technicians desde form-data y devuelve la tabla actualizada (página 1)
+- `templates/_ticket_modal.html`: nuevo archivo — modal con descripción, metadatos, formulario de edición (prioridad, estado, responsables con checkbox cards)
+- `templates/_tickets_table.html`: filas clickables (`hx-get`, `hx-on::after-request="openTicketModal()"`) y controles de paginación al pie con botones anterior/página/siguiente
+- `templates/index.html`: botón "+ Añadir técnico" en cabecera, modal de creación de técnicos con lista interna, selector de responsables tipo checkbox cards (has-[:checked] Tailwind v3), eliminada sección "Gestión de técnicos" del pie
+
+Decisiones:
+- `POST /tickets/{ticket_id}/form` en lugar de `PATCH` porque HTMX con form-data y método PATCH en algunos navegadores tiene inconsistencias; el endpoint nuevo es exclusivo para el frontend
+- Los endpoints nuevos se declaran antes que `GET /tickets/{ticket_id}` para claridad de routing (FastAPI los distingue por el segmento extra `/modal` y la diferencia de método, pero la posición es más legible)
+- Paginación en Python (slice sobre lista ya filtrada) para simplicidad; con volúmenes grandes se añadiría LIMIT/OFFSET en SQL
+- `has-[:checked]` de Tailwind funciona con el CDN v3 JIT sin configuración adicional
+
+Archivos tocados: app/main.py, templates/index.html, templates/_tickets_table.html, templates/_ticket_modal.html (nuevo)
+Tests: 10/10 ✅
+
 [2026-07-01 01:00] Corrección de bugs detectados en code review (deadline/overdue)
 
 Solicitado: Revisar y corregir los bugs encontrados en el code review de la feature de deadline y filtro "Solo vencidos".

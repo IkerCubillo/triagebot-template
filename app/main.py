@@ -27,6 +27,16 @@ from app.models import (
 
 load_dotenv()
 
+PAGE_SIZE = 20
+
+
+def _paginate(tickets: list, page: int) -> tuple:
+    total = len(tickets)
+    total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = max(1, min(page, total_pages))
+    return tickets[(page - 1) * PAGE_SIZE : page * PAGE_SIZE], page, total_pages, total
+
+
 class TicketUpdate(BaseModel):
     status: str | None = None
     priority: str | None = None
@@ -215,7 +225,8 @@ def _query_tickets(
 @app.get("/")
 def index(request: Request, session: Session = Depends(get_session)):
     now = _now_naive()
-    tickets = _query_tickets(session)
+    all_tickets = _query_tickets(session)
+    tickets, page, total_pages, total = _paginate(all_tickets, 1)
     return templates.TemplateResponse(
         "index.html",
         {
@@ -224,6 +235,9 @@ def index(request: Request, session: Session = Depends(get_session)):
             "ticket_technicians": _build_ticket_technicians(session, tickets),
             "all_technicians": _all_technicians(session),
             "now": now,
+            "page": page,
+            "total_pages": total_pages,
+            "total": total,
         },
     )
 
@@ -236,6 +250,7 @@ def tickets_table(
     status: str | None = None,
     technician_id: str | None = None,
     overdue: str | None = None,
+    page: int = 1,
     session: Session = Depends(get_session),
 ):
     try:
@@ -243,7 +258,7 @@ def tickets_table(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="technician_id must be an integer") from exc
     now = _now_naive()
-    tickets = _query_tickets(
+    all_tickets = _query_tickets(
         session,
         category or None,
         priority or None,
@@ -252,6 +267,7 @@ def tickets_table(
         overdue or None,
         now=now,
     )
+    tickets, page, total_pages, total = _paginate(all_tickets, page)
     return templates.TemplateResponse(
         "_tickets_table.html",
         {
@@ -259,6 +275,9 @@ def tickets_table(
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
             "now": now,
+            "page": page,
+            "total_pages": total_pages,
+            "total": total,
         },
     )
 
@@ -275,20 +294,25 @@ def create_ticket_form(
     try:
         body = TicketCreate(title=title, description=description, technician_ids=technician_ids)
     except ValidationError:
-        tickets = _query_tickets(session)
+        all_err_tickets = _query_tickets(session)
+        err_tickets, err_page, err_total_pages, err_total = _paginate(all_err_tickets, 1)
         return templates.TemplateResponse(
             "_tickets_table.html",
             {
                 "request": request,
-                "tickets": tickets,
-                "ticket_technicians": _build_ticket_technicians(session, tickets),
+                "tickets": err_tickets,
+                "ticket_technicians": _build_ticket_technicians(session, err_tickets),
                 "error": "No se ha podido crear el ticket. Revisa el título y la descripción.",
                 "now": now,
+                "page": err_page,
+                "total_pages": err_total_pages,
+                "total": err_total,
             },
         )
 
     _create_ticket(body, session)
-    tickets = _query_tickets(session)
+    all_tickets = _query_tickets(session)
+    tickets, page, total_pages, total = _paginate(all_tickets, 1)
     return templates.TemplateResponse(
         "_tickets_table.html",
         {
@@ -296,6 +320,9 @@ def create_ticket_form(
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
             "now": now,
+            "page": page,
+            "total_pages": total_pages,
+            "total": total,
         },
     )
 
@@ -374,6 +401,68 @@ def get_ticket_stats(session: Session = Depends(get_session)):
             by_status[t.status] += 1
 
     return TicketStats(by_category=by_category, by_priority=by_priority, by_status=by_status)
+
+
+@app.get("/tickets/{ticket_id}/modal")
+def ticket_modal(ticket_id: int, request: Request, session: Session = Depends(get_session)):
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return templates.TemplateResponse(
+        "_ticket_modal.html",
+        {
+            "request": request,
+            "ticket": ticket,
+            "all_technicians": _all_technicians(session),
+            "ticket_technician_ids": _get_technician_ids(session, ticket_id),
+        },
+    )
+
+
+@app.post("/tickets/{ticket_id}/form")
+def update_ticket_form(
+    ticket_id: int,
+    request: Request,
+    status: str = Form(default=None),
+    priority: str = Form(default=None),
+    technician_ids: list[int] = Form(default=[]),
+    session: Session = Depends(get_session),
+):
+    ticket = session.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    if status and status in ALLOWED_STATUSES:
+        if ticket.status != status:
+            ticket.status_since = _now_naive()
+        ticket.status = status
+
+    if priority and priority in ALLOWED_PRIORITIES:
+        if ticket.priority != priority:
+            ticket.deadline = _calculate_deadline(priority, ticket.created_at)
+        ticket.priority = priority
+
+    ticket.updated_at = _now_naive()
+    session.add(ticket)
+    session.commit()
+    session.refresh(ticket)
+    _set_technicians(session, ticket.id, technician_ids)
+
+    now = _now_naive()
+    all_tickets = _query_tickets(session)
+    tickets, page, total_pages, total = _paginate(all_tickets, 1)
+    return templates.TemplateResponse(
+        "_tickets_table.html",
+        {
+            "request": request,
+            "tickets": tickets,
+            "ticket_technicians": _build_ticket_technicians(session, tickets),
+            "now": now,
+            "page": page,
+            "total_pages": total_pages,
+            "total": total,
+        },
+    )
 
 
 @app.get("/tickets/{ticket_id}", response_model=TicketResponse)
