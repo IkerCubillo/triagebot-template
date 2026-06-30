@@ -1,5 +1,22 @@
 # DEV_LOG
 
+[2026-07-01 12:30] Loading overlay para creación de ticket (llamada LLM)
+
+Solicitado: Popup de carga bloqueante para evitar que el usuario sature de acciones mientras el clasificador IA procesa el ticket.
+
+Implementado:
+- `templates/index.html`: `<style>` con override de `.htmx-indicator` que añade `pointer-events: none` cuando oculto y `pointer-events: auto` cuando visible (el CSS nativo de HTMX no bloquea clics en opacity:0)
+- `templates/index.html`: overlay `#global-loading` con z-index 200 (sobre todos los modales), spinner CSS con `animate-spin` de Tailwind y mensaje explicativo en español
+- `templates/index.html`: formulario de creación de ticket cambia `hx-indicator` de `#table-loading` a `#global-loading` + añade `hx-disabled-elt="find button[type='submit']"` para inhabilitar el botón durante la petición
+
+Decisiones:
+- El overlay solo aplica a la creación de ticket (la única operación lenta por la llamada al LLM); los filtros y la edición desde el popup siguen usando `#table-loading` (texto sutil) porque son operaciones rápidas
+- `hx-disabled-elt` como segunda línea de defensa: aunque el overlay bloquea visualmente, el botón deshabilitado impide reenvíos si el overlay tardase en aparecer
+- `backdrop-blur-sm` para contextualizar visualmente que la app está procesando sin ser demasiado agresivo
+
+Archivos tocados: templates/index.html
+Tests: 10/10 ✅
+
 [2026-07-01 12:00] UI: popup de detalle, selector de técnicos, paginación, modal técnico
 
 Solicitado: Añadir popup de detalle al clicar ticket, edición desde el popup, mover creación de técnicos a modal en cabecera, selector de responsables visual (checkbox cards), y paginación de 20 tickets por página.
