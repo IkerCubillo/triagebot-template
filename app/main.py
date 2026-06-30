@@ -19,6 +19,7 @@ from app.models import (
     TicketCreate,
     TicketResponse,
     TicketTechnician,
+    compute_deadline,
 )
 
 load_dotenv()
@@ -109,6 +110,7 @@ def _create_ticket(body: TicketCreate, session: Session) -> Ticket:
         category=cls["category"],
         priority=cls["priority"],
         tags=cls["tags"],
+        deadline=compute_deadline(cls["priority"], datetime.now(UTC)),
     )
     session.add(ticket)
     session.commit()
@@ -126,6 +128,7 @@ def _query_tickets(
     priority: str | None = None,
     status: str | None = None,
     technician_id: int | None = None,
+    overdue_only: bool = False,
 ) -> list[Ticket]:
     query = select(Ticket)
     if category is not None:
@@ -137,8 +140,21 @@ def _query_tickets(
     if technician_id is not None:
         query = query.join(TicketTechnician, Ticket.id == TicketTechnician.ticket_id)
         query = query.where(TicketTechnician.technician_id == technician_id)
+    if overdue_only:
+        query = query.where(Ticket.deadline < datetime.now(UTC)).where(Ticket.status != "closed")
     query = query.order_by(Ticket.created_at.desc())
     return session.exec(query).all()
+
+
+def _is_overdue(ticket: Ticket) -> bool:
+    deadline = ticket.deadline
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    return deadline < datetime.now(UTC) and ticket.status != "closed"
+
+
+def _overdue_ids(tickets: list[Ticket]) -> set[int]:
+    return {t.id for t in tickets if _is_overdue(t)}
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +171,7 @@ def index(request: Request, session: Session = Depends(get_session)):
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
             "all_technicians": _all_technicians(session),
+            "overdue_ids": _overdue_ids(tickets),
         },
     )
 
@@ -166,6 +183,7 @@ def tickets_table(
     priority: str | None = None,
     status: str | None = None,
     technician_id: int | None = None,
+    overdue_only: bool = False,
     session: Session = Depends(get_session),
 ):
     tickets = _query_tickets(
@@ -174,6 +192,7 @@ def tickets_table(
         priority or None,
         status or None,
         technician_id or None,
+        overdue_only,
     )
     return templates.TemplateResponse(
         "_tickets_table.html",
@@ -181,6 +200,7 @@ def tickets_table(
             "request": request,
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
+            "overdue_ids": _overdue_ids(tickets),
         },
     )
 
@@ -203,6 +223,7 @@ def create_ticket_form(
                 "request": request,
                 "tickets": tickets,
                 "ticket_technicians": _build_ticket_technicians(session, tickets),
+                "overdue_ids": _overdue_ids(tickets),
                 "error": "No se ha podido crear el ticket. Revisa el título y la descripción.",
             },
         )
@@ -215,6 +236,7 @@ def create_ticket_form(
             "request": request,
             "tickets": tickets,
             "ticket_technicians": _build_ticket_technicians(session, tickets),
+            "overdue_ids": _overdue_ids(tickets),
         },
     )
 
@@ -270,9 +292,10 @@ def list_tickets(
     category: str | None = None,
     priority: str | None = None,
     status: str | None = None,
+    overdue_only: bool = False,
     session: Session = Depends(get_session),
 ):
-    tickets = _query_tickets(session, category, priority, status)
+    tickets = _query_tickets(session, category, priority, status, overdue_only=overdue_only)
     return [_ticket_to_response(t, session) for t in tickets]
 
 
@@ -299,6 +322,7 @@ def update_ticket(ticket_id: int, body: TicketUpdate, session: Session = Depends
         if body.priority not in ALLOWED_PRIORITIES:
             raise HTTPException(status_code=422, detail=f"Invalid priority: {body.priority}")
         ticket.priority = body.priority
+        ticket.deadline = compute_deadline(body.priority, datetime.now(UTC))
 
     ticket.updated_at = datetime.now(UTC)
     session.add(ticket)

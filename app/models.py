@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import JSON, Column
@@ -9,6 +9,15 @@ ALLOWED_CATEGORIES = {"bug", "feature_request", "question", "urgent"}
 ALLOWED_PRIORITIES = {"P1", "P2", "P3"}
 ALLOWED_STATUSES = {"open", "in_progress", "closed"}
 
+PRIORITY_DEADLINE_DAYS = {"P1": 0, "P2": 1, "P3": 2}
+
+
+def compute_deadline(priority: str, from_dt: datetime) -> datetime:
+    """Fin del día (23:59:59 UTC) del día de `from_dt` + offset según prioridad."""
+    days = PRIORITY_DEADLINE_DAYS[priority]
+    target_day = from_dt + timedelta(days=days)
+    return target_day.replace(hour=23, minute=59, second=59, microsecond=0)
+
 
 class Ticket(SQLModel, table=True):
     id: int | None = SQLField(default=None, primary_key=True)
@@ -18,6 +27,7 @@ class Ticket(SQLModel, table=True):
     priority: str
     tags: list[str] = SQLField(default=[], sa_column=Column(JSON))
     status: str = "open"
+    deadline: datetime
     created_at: datetime = SQLField(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = SQLField(default_factory=lambda: datetime.now(UTC))
 
@@ -57,6 +67,7 @@ class TicketResponse(BaseModel):
     priority: str
     tags: list[str]
     status: str
+    deadline: datetime
     created_at: datetime
     updated_at: datetime
     technician_ids: list[int] = []

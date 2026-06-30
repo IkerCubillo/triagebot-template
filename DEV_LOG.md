@@ -1,5 +1,52 @@
 # DEV_LOG
 
+[2026-06-30 15:20] Plazos: deadline por prioridad + filtro "solo vencidos"
+
+Solicitado: Petición 1 del email de Marta Iturri (Integrante 1 — "Plazos"):
+cada ticket debe tener una fecha límite calculada según su prioridad (P1 =
+hoy, P2 = mañana, P3 = +2 días), visible en el tablero, con indicador visual
+y filtro de "solo vencidos".
+
+Implementado:
+- `app/models.py`: `PRIORITY_DEADLINE_DAYS` y `compute_deadline(priority,
+  from_dt)` (fin de día UTC del día de creación + offset según prioridad).
+  Campo `deadline: datetime` añadido a `Ticket` y a `TicketResponse`.
+- `app/main.py`: `_create_ticket` calcula el deadline al crear el ticket;
+  `update_ticket` (PATCH) lo recalcula si cambia la prioridad, tomando como
+  referencia el momento del PATCH. `_query_tickets` acepta `overdue_only`
+  (deadline pasado + status != closed) a nivel SQL. Nuevo helper
+  `_is_overdue`/`_overdue_ids` para pintar el badge sin comparar datetimes
+  dentro de Jinja (evita el problema clásico de aware vs naive al releer de
+  SQLite). `overdue_only` añadido también a `GET /tickets` (JSON) por
+  paridad con el resto de filtros.
+- `templates/_tickets_table.html`: columna "Vencimiento" (fecha + badge rojo
+  "Vencido" si aplica), colspan del estado vacío actualizado de 8 a 9.
+- `templates/index.html`: checkbox "Solo vencidos" en el formulario de
+  filtros, mismo cableado HTMX que el resto de selects.
+- `tests/test_extra_validation.py`: 3 tests nuevos — cálculo de deadline por
+  prioridad, recálculo en PATCH, y exclusión de tickets cerrados en
+  `overdue_only`.
+
+Decisiones:
+- Deadline = fin de día (23:59:59 UTC), no offset de hora exacta, para que
+  "P1 = hoy" no dependa de la hora de creación del ticket.
+- Un ticket cerrado nunca cuenta como vencido, aunque su deadline haya
+  pasado (decisión de Marta: lo que le preocupa es lo que "se le cuela",
+  no lo ya resuelto).
+- Recalcular el deadline en cada cambio de prioridad vía PATCH, usando el
+  momento del PATCH como referencia (no la fecha de creación original) para
+  no marcar como vencido de golpe un ticket antiguo recién escalado.
+- No se ha tocado `ALLOWED_STATUSES` ni el ciclo de vida (`en_curso`,
+  `resuelto`, reapertura) — esa es la petición 2 de Marta, responsabilidad de
+  Integrante 2, e intencionadamente toca los mismos ficheros en paralelo.
+- Verificado manualmente con `uvicorn` que un `triagebot.db` local previo no
+  se rompe el flujo (SQLite no migra columnas nuevas en tablas existentes;
+  hay que borrar la DB local tras este cambio).
+
+Archivos tocados: app/models.py, app/main.py, templates/_tickets_table.html,
+templates/index.html, tests/test_extra_validation.py
+Tests: 13/13 ✅
+
 [2026-06-30 14:35] Frontend paso 10: checks finales — SPEC_FRONTEND completo
 
 Solicitado: Ejecutar el paso 10 (último) de SPEC_FRONTEND_PLAN.md: confirmar

@@ -137,6 +137,15 @@
             <option value="closed">Cerrado</option>
           </select>
         </div>
+        <div class="flex items-center gap-2 pb-1.5">
+          <input
+            id="filter-overdue" name="overdue_only" type="checkbox" value="true"
+            hx-get="/tickets/table" hx-trigger="change" hx-include="#ticket-filters"
+            hx-target="#tickets-table" hx-swap="innerHTML" hx-indicator="#table-loading"
+            class="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+          >
+          <label for="filter-overdue" class="text-sm font-medium text-slate-700">Solo vencidos</label>
+        </div>
         <button
           type="reset"
           hx-get="/tickets/table" hx-target="#tickets-table" hx-swap="innerHTML" hx-indicator="#table-loading"
