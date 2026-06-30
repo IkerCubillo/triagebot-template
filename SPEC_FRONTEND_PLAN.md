@@ -28,11 +28,11 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
 
 ## Pasos
 
-- [ ] **1. Configurar `Jinja2Templates` en `app/main.py`**
+- [x] **1. Configurar `Jinja2Templates` en `app/main.py`**
   `from fastapi.templating import Jinja2Templates` +
   `templates = Jinja2Templates(directory="templates")`.
 
-- [ ] **2. Extraer la lógica de filtrado a una función reutilizable**
+- [x] **2. Extraer la lógica de filtrado a una función reutilizable**
   Encapsular el `select(Ticket)` + `.where()` + `.order_by()` de `list_tickets`
   en una función común (p. ej. `_query_tickets(...)`) y hacer que `list_tickets`
   la use.
