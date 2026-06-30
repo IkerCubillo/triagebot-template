@@ -19,6 +19,10 @@ def fake_classification(category="bug", priority="P1", tags=None):
     }
 
 
+# ---------------------------------------------------------------------------
+# Tests originales de aceptación
+# ---------------------------------------------------------------------------
+
 def test_post_ticket_creates_ticket_with_classification(client, monkeypatch):
     monkeypatch.setattr(
         "app.classifier.classify_ticket",
@@ -129,3 +133,63 @@ def test_update_ticket_and_filter_by_status_priority_category(client, monkeypatc
     tickets = filtered.json()
     assert len(tickets) == 1
     assert tickets[0]["id"] == ticket_id
+
+
+# ---------------------------------------------------------------------------
+# GET /tickets/{id}
+# ---------------------------------------------------------------------------
+
+def test_get_ticket_by_id(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.classifier.classify_ticket",
+        lambda title, description: fake_classification(category="question", priority="P3", tags=["faq"]),
+    )
+
+    created = client.post(
+        "/tickets",
+        json={"title": "Cómo uso la API", "description": "El cliente pregunta cómo usar la API pública"},
+    )
+    assert created.status_code == 201
+    ticket_id = created.json()["id"]
+
+    response = client.get(f"/tickets/{ticket_id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == ticket_id
+    assert data["title"] == "Cómo uso la API"
+    assert data["category"] == "question"
+    assert data["priority"] == "P3"
+    assert data["tags"] == ["faq"]
+
+
+def test_get_ticket_by_id_not_found(client):
+    response = client.get("/tickets/99999")
+
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# PATCH /tickets/{id}
+# ---------------------------------------------------------------------------
+
+def test_patch_ticket_not_found(client):
+    response = client.patch("/tickets/99999", json={"status": "closed"})
+
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# POST /tickets — validación de campos requeridos
+# ---------------------------------------------------------------------------
+
+def test_post_ticket_missing_required_fields(client):
+    missing_payloads = [
+        {"title": "Solo título"},
+        {"description": "Solo descripción"},
+        {},
+    ]
+
+    for payload in missing_payloads:
+        response = client.post("/tickets", json=payload)
+        assert response.status_code == 422
