@@ -45,6 +45,22 @@ Decisiones:
 Archivos tocados: SPEC_FRONTEND_PLAN.md, app/main.py
 Tests: 10/10 ✅ (pytest -q), ruff check . ✅
 
+[2026-06-30 12:30] FASE 1 spec — catálogo de tests existentes en SPEC.md
+
+Solicitado: Añadir sección "## 10. Tests" en SPEC.md con los tests ya existentes organizados por caso de uso (nombre, qué cubre, qué bug detectaría). Sin inventar tests nuevos.
+
+Implementado:
+- Añadida sección `## 10. Tests` al final de `SPEC.md` via Write (el archivo no tenía newline final, lo que hacía fallar Edit)
+- Documentados los 10 tests existentes en 4 casos de uso: UC-1 POST /tickets (4 tests), UC-2 GET /tickets (2 tests), UC-3 GET /tickets/{id} (2 tests), UC-4 PATCH /tickets/{id} (3 tests)
+- Cada entrada incluye archivo fuente, qué comportamiento cubre y qué regresión detectaría
+
+Decisiones:
+- `test_update_ticket_and_filter_by_status_priority_category` aparece en UC-2 y UC-4 porque el test cubre ambos endpoints en un solo flujo
+- Write en lugar de Edit porque el archivo terminaba sin `\n` y el anchor del Edit no encontraba el texto final
+
+Archivos tocados: SPEC.md
+Tests: N/A (fase spec, sin ejecución de código)
+
 [2026-06-30 11:45] Guardia CI: .env no commiteado
 
 Solicitado: Añadir comprobación en CI o en tests de que .env no se pushea al repositorio.

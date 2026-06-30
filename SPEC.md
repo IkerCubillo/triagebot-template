@@ -256,3 +256,71 @@ Los tests mockean el clasificador para no consumir tokens en CI
 - No propagar excepciones del SDK del LLM al endpoint.
 - No modificar los tests de aceptación para hacerlos pasar.
 - No introducir React ni frontend complejo.
+
+---
+
+## 10. Tests
+
+Catálogo de los tests existentes organizados por caso de uso. Para cada uno: nombre, qué caso de uso cubre y qué bug o regresión detectaría.
+
+> Los tests viven en `tests/test_acceptance.py` (no se modifica) y `tests/test_extra_validation.py`.
+
+---
+
+### UC-1 — `POST /tickets` (crear ticket)
+
+**`test_post_ticket_creates_ticket_with_classification`** · `test_acceptance.py`
+- **Cubre:** `POST /tickets` devuelve `201` con todos los campos clasificados: `category` válida, `priority` válida, `tags` como lista, `status = "open"`, `id` entero, timestamps presentes.
+- **Detectaría:** regresión en el endpoint que omita campos de clasificación, devuelva un código distinto de `201`, o rompa la serialización del ticket en respuesta.
+
+**`test_post_ticket_rejects_invalid_input`** · `test_acceptance.py`
+- **Cubre:** cinco variantes de input inválido — `title` vacío, `title` solo espacios, `title` de 201 caracteres, `description` vacía, `description` de 5001 caracteres — todas deben devolver `422`.
+- **Detectaría:** pérdida de validación de longitud o de trim-and-reject que permitiría guardar títulos en blanco o descripciones desbordadas en base de datos.
+
+**`test_post_ticket_missing_required_fields`** · `test_acceptance.py`
+- **Cubre:** tres payloads incompletos — solo `title`, solo `description`, cuerpo vacío — todos deben devolver `422`.
+- **Detectaría:** regresión donde campos obligatorios dejan de ser requeridos y el endpoint acepta tickets a medio completar.
+
+**`test_classifier_failure_uses_safe_fallback`** · `test_acceptance.py`
+- **Cubre:** cuando `classify_ticket` lanza una excepción, `POST /tickets` aun así devuelve `201` con el fallback `{category: "question", priority: "P3", tags: []}`.
+- **Detectaría:** propagación de excepciones del SDK al endpoint (que convertiría el `201` en un `5xx`), o un fallback con valores que no pertenecen a los enums permitidos.
+
+---
+
+### UC-2 — `GET /tickets` (listar y filtrar)
+
+**`test_created_ticket_is_persisted_and_listed`** · `test_acceptance.py`
+- **Cubre:** un ticket creado vía `POST /tickets` aparece en `GET /tickets` con `category` y `title` correctos.
+- **Detectaría:** fallo de persistencia (ticket no guardado en SQLite) o endpoint `GET /tickets` que devuelva lista vacía sin haber consultado la base de datos.
+
+**`test_update_ticket_and_filter_by_status_priority_category`** · `test_acceptance.py` *(cubre también UC-4)*
+- **Cubre (UC-2):** `GET /tickets?category=urgent&priority=P2&status=in_progress` devuelve exactamente el ticket que acaba de ser actualizado.
+- **Detectaría:** filtros que no apliquen la condición `AND` entre los tres parámetros, o que devuelvan tickets que no cumplen todos los filtros simultáneamente.
+
+---
+
+### UC-3 — `GET /tickets/{id}` (obtener por id)
+
+**`test_get_ticket_by_id`** · `test_acceptance.py`
+- **Cubre:** `GET /tickets/{id}` devuelve `200` con los datos exactos del ticket (id, title, category, priority, tags).
+- **Detectaría:** endpoint que devuelva el ticket equivocado, que omita campos, o que no busque por id en la base de datos.
+
+**`test_get_ticket_by_id_not_found`** · `test_acceptance.py`
+- **Cubre:** `GET /tickets/99999` devuelve `404`.
+- **Detectaría:** ausencia del manejo de "not found", que haría que el endpoint devolviera `200` con body nulo o lanzara una excepción no controlada.
+
+---
+
+### UC-4 — `PATCH /tickets/{id}` (actualizar)
+
+**`test_update_ticket_and_filter_by_status_priority_category`** · `test_acceptance.py` *(cubre también UC-2)*
+- **Cubre (UC-4):** `PATCH /tickets/{id}` con `{status: "in_progress", priority: "P2"}` devuelve `200` con los valores actualizados.
+- **Detectaría:** endpoint que ignore los campos del body, que no persista el cambio, o que devuelva el ticket sin actualizar.
+
+**`test_patch_ticket_not_found`** · `test_acceptance.py`
+- **Cubre:** `PATCH /tickets/99999` devuelve `404`.
+- **Detectaría:** ausencia del guard de existencia en el endpoint, provocando un error de base de datos no controlado o una respuesta `200` sobre un id inexistente.
+
+**`test_patch_ticket_rejects_invalid_status`** · `test_extra_validation.py`
+- **Cubre:** `PATCH /tickets/{id}` con `{status: "invalid_status"}` devuelve `422`.
+- **Detectaría:** pérdida de la validación de enum en el endpoint, que permitiría persistir un `status` fuera de `{open, in_progress, closed}`.
