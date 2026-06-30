@@ -54,7 +54,7 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
   mensaje de error. Si tiene éxito, devuelve el tablero actualizado
   (`_tickets_table.html`).
 
-- [ ] **6. Completar `templates/_tickets_table.html`**
+- [x] **6. Completar `templates/_tickets_table.html`**
   Loop Jinja2 sobre `tickets` en el `<tbody>` existente:
   - badge de prioridad (P1 rojo/destacado, P2 ámbar, P3 gris/verde),
   - badge de categoría con traducción visual (bug→Error, feature_request→Nueva
@@ -64,7 +64,7 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
   - estado vacío ("Todavía no hay tickets. Crea el primer ticket para empezar.")
     si `tickets` está vacío.
 
-- [ ] **7. Completar `templates/index.html`**
+- [x] **7. Completar `templates/index.html`**
   Sustituir el TODO por:
   - card con formulario (`title` input, `description` textarea, botón
     "Crear ticket"), con `hx-post="/tickets/form" hx-target="#tickets-table"
@@ -77,7 +77,7 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
   Labels en español; opción vacía en cada filtro ("Todas las categorías" /
   "Todas las prioridades" / "Todos los estados").
 
-- [ ] **8. Accesibilidad mínima**
+- [x] **8. Accesibilidad mínima**
   `<label>` en cada input/select, `name` correctos para que HTMX envíe los datos,
   badges con texto visible (no solo color).
 
