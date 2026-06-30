@@ -1,6 +1,5 @@
 # DEV_LOG
 
-<<<<<<< HEAD
 [2026-06-30 15:00] Seed automático de tickets desde seed_tickets.json
 
 Solicitado: Cargar todos los tickets de seed_tickets.json al arrancar la app,
@@ -28,7 +27,6 @@ Decisiones:
   ningún ticket de seed coincide con los filtros específicos que usan los tests
 
 Archivos tocados: app/db.py, app/main.py
-=======
 [2026-06-30 17:30] Nuevo endpoint GET /tickets/stats
 
 Solicitado: Añadir endpoint JSON que devuelva conteos de tickets por categoría, prioridad y estado.
@@ -64,7 +62,6 @@ Decisiones:
 - Selector de técnico vinculado al formulario `#ticket-filters` con `form="ticket-filters"` para que `hx-include="#ticket-filters"` lo capture automáticamente sin duplicar lógica HTMX.
 
 Archivos tocados: app/models.py, app/main.py, templates/index.html, templates/_tickets_table.html, templates/_technicians_list.html (nuevo)
->>>>>>> 791a6770eb973c9643a4fc767a67b933455acaf6
 Tests: 10/10 ✅
 
 [2026-06-30 14:10] Frontend paso 8: accesibilidad mínima (auditoría)

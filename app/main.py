@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 import app.classifier as classifier
 
-from app.db import get_session, init_db
+from app.db import get_engine, get_session, init_db
 from app.models import (
     ALLOWED_CATEGORIES,
     ALLOWED_PRIORITIES,
