@@ -49,7 +49,7 @@ def create_ticket(body: TicketCreate, session: Session = Depends(get_session)):
     session.add(ticket)
     session.commit()
     session.refresh(ticket)
-    return TicketResponse.model_validate(ticket)
+    return TicketResponse.model_validate(ticket) 
 
 
 @app.get("/tickets", response_model=list[TicketResponse])
