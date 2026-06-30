@@ -10,7 +10,6 @@ from pydantic import BaseModel, ValidationError
 from sqlmodel import Session, select
 
 import app.classifier as classifier
-
 from app.db import get_engine, get_session, init_db
 from app.models import (
     ALLOWED_CATEGORIES,
