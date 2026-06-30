@@ -1,0 +1,18 @@
+{% if tech_error %}
+<p class="text-sm text-red-600">{{ tech_error }}</p>
+{% endif %}
+{% if all_technicians %}
+  <ul class="mt-2 space-y-1">
+    {% for t in all_technicians %}
+    <li class="flex items-center gap-2 text-sm">
+      <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
+        {{ t.name[0]|upper }}
+      </span>
+      <span class="font-medium text-slate-800">{{ t.name }}</span>
+      {% if t.email %}<span class="text-slate-400">· {{ t.email }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="mt-2 text-sm text-slate-400">No hay técnicos aún.</p>
+{% endif %}

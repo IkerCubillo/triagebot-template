@@ -1,5 +1,25 @@
 # DEV_LOG
 
+[2026-06-30 16:00] Añadir técnicos/responsables a tickets
+
+Solicitado: Ampliar el modelo de datos con técnicos (uno o varios por ticket), filtrado por técnico en el tablero, selector de técnico activo en el header, gestión de técnicos desde la UI y endpoints de API.
+
+Implementado:
+- `app/models.py`: nuevos modelos `Technician` (tabla SQLite), `TicketTechnician` (tabla de enlace many-to-many), `TechnicianCreate`, `TechnicianResponse`; `TicketCreate` acepta `technician_ids: list[int] = []` (opcional, retrocompatible); `TicketResponse` incluye `technician_ids: list[int] = []`.
+- `app/main.py`: helpers `_get_technician_ids`, `_set_technicians`, `_build_ticket_technicians`, `_ticket_to_response`; `_create_ticket` asigna técnicos tras el commit; `_query_tickets` acepta `technician_id` con join a `TicketTechnician`; `TicketUpdate` acepta `technician_ids`; endpoints JSON actualizados a `_ticket_to_response`; nuevos endpoints `POST /technicians` (JSON), `GET /technicians` (JSON), `POST /technicians/form` (HTMX).
+- `templates/index.html`: selector "Técnico activo" en header top-right (incluido en `#ticket-filters`, filtra tabla al cambiar); multi-select de responsables en formulario de creación; card "Gestión de técnicos" con formulario HTMX para añadir técnicos y lista en vivo.
+- `templates/_tickets_table.html`: columna "Responsables" con chips indigo por técnico asignado; colspan 7→8.
+- `templates/_technicians_list.html`: nuevo partial para lista de técnicos (usado por HTMX en la sección de gestión).
+
+Decisiones:
+- Many-to-many via tabla enlace (`TicketTechnician`) en lugar de JSON array en el ticket, para mantener integridad referencial.
+- `technician_ids` opcional con default `[]` en `TicketCreate` y `TicketResponse` para no romper ningún test existente.
+- `_build_ticket_technicians` usa exactamente 2 queries para cualquier número de tickets (eficiencia).
+- Selector de técnico vinculado al formulario `#ticket-filters` con `form="ticket-filters"` para que `hx-include="#ticket-filters"` lo capture automáticamente sin duplicar lógica HTMX.
+
+Archivos tocados: app/models.py, app/main.py, templates/index.html, templates/_tickets_table.html, templates/_technicians_list.html (nuevo)
+Tests: 10/10 ✅
+
 [2026-06-30 14:10] Frontend paso 8: accesibilidad mínima (auditoría)
 
 Solicitado: Ejecutar el paso 8 de SPEC_FRONTEND_PLAN.md: verificar accesibilidad
