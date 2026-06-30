@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sqlmodel import Session, select
 
 import app.classifier as classifier
@@ -29,13 +29,18 @@ app = FastAPI(title="TriageBot", lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
 
+@app.get("/")
+def index(request: Request, session: Session = Depends(get_session)):
+    tickets = _query_tickets(session)
+    return templates.TemplateResponse("index.html", {"request": request, "tickets": tickets})
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/tickets", status_code=201, response_model=TicketResponse)
-def create_ticket(body: TicketCreate, session: Session = Depends(get_session)):
+def _create_ticket(body: TicketCreate, session: Session) -> Ticket:
     try:
         cls = classifier.classify_ticket(body.title, body.description)
     except Exception:
@@ -51,7 +56,41 @@ def create_ticket(body: TicketCreate, session: Session = Depends(get_session)):
     session.add(ticket)
     session.commit()
     session.refresh(ticket)
-    return TicketResponse.model_validate(ticket) 
+    return ticket
+
+
+@app.post("/tickets", status_code=201, response_model=TicketResponse)
+def create_ticket(body: TicketCreate, session: Session = Depends(get_session)):
+    ticket = _create_ticket(body, session)
+    return TicketResponse.model_validate(ticket)
+
+
+@app.post("/tickets/form")
+def create_ticket_form(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    try:
+        body = TicketCreate(title=title, description=description)
+    except ValidationError:
+        tickets = _query_tickets(session)
+        return templates.TemplateResponse(
+            "_tickets_table.html",
+            {
+                "request": request,
+                "tickets": tickets,
+                "error": "No se ha podido crear el ticket. Revisa el título y la descripción.",
+            },
+            status_code=422,
+        )
+
+    _create_ticket(body, session)
+    tickets = _query_tickets(session)
+    return templates.TemplateResponse(
+        "_tickets_table.html", {"request": request, "tickets": tickets}
+    )
 
 
 def _query_tickets(
@@ -80,6 +119,20 @@ def list_tickets(
 ):
     tickets = _query_tickets(session, category, priority, status)
     return [TicketResponse.model_validate(t) for t in tickets]
+
+
+@app.get("/tickets/table")
+def tickets_table(
+    request: Request,
+    category: str | None = None,
+    priority: str | None = None,
+    status: str | None = None,
+    session: Session = Depends(get_session),
+):
+    tickets = _query_tickets(session, category, priority, status)
+    return templates.TemplateResponse(
+        "_tickets_table.html", {"request": request, "tickets": tickets}
+    )
 
 
 @app.get("/tickets/{ticket_id}", response_model=TicketResponse)

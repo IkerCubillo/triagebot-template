@@ -1,5 +1,84 @@
 # DEV_LOG
 
+[2026-06-30 13:30] Frontend paso 5: crear POST /tickets/form
+
+Solicitado: Ejecutar el paso 5 de SPEC_FRONTEND_PLAN.md: crear el endpoint
+POST /tickets/form que el formulario HTMX usará para crear tickets sin recargar
+la página, reutilizando la lógica de creación y validación del endpoint JSON.
+
+Implementado:
+- Extraída la lógica de creación de `create_ticket` a una función auxiliar
+  `_create_ticket(body, session)` (clasificación + fallback + guardado)
+- `create_ticket` (POST /tickets) ahora delega en `_create_ticket`, sin cambios en
+  su firma, status_code ni response_model
+- Añadido endpoint `POST /tickets/form` que acepta `title`/`description` vía
+  `Form(...)`, construye un `TicketCreate(title=title, description=description)`
+  para reutilizar exactamente la misma validación que el API JSON (trim + límites
+  de longitud vía Pydantic), captura `ValidationError` y devuelve un fragmento
+  `_tickets_table.html` con status 422 y mensaje de error si falla
+- Si la validación pasa, crea el ticket vía `_create_ticket` y devuelve el tablero
+  actualizado (`_tickets_table.html`) con status 200
+
+Decisiones:
+- Se reutiliza `TicketCreate` para validar en vez de reimplementar las reglas de
+  longitud/trim, evitando duplicar lógica de validación entre API y formulario
+- El mensaje de error se pasa al contexto del template como variable `error`;
+  el renderizado visual de ese mensaje se completará en el paso 6 al tocar
+  `_tickets_table.html`
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, app/main.py, DEV_LOG.md
+Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+Verificación manual: POST /tickets/form con datos válidos → 200 HTML; con
+title/description vacíos → 422 HTML (sin 500); POST /tickets JSON sigue
+devolviendo 201 con el contrato esperado
+
+[2026-06-30 13:15] Frontend paso 4: crear GET /tickets/table
+
+Solicitado: Ejecutar el paso 4 de SPEC_FRONTEND_PLAN.md: crear el endpoint
+GET /tickets/table que HTMX usará para refrescar el tablero filtrado sin recargar
+la página.
+
+Implementado:
+- Añadido endpoint `GET /tickets/table` en app/main.py, colocado entre
+  `list_tickets` y `get_ticket` (antes de la ruta `/tickets/{ticket_id}` para que
+  el path estático no sea capturado por el path param)
+- Acepta `category`, `priority`, `status` opcionales, reutiliza `_query_tickets`
+  y renderiza `templates/_tickets_table.html` como fragmento HTML
+- No lleva `response_model` por devolver HTML, no JSON
+
+Decisiones:
+- Se colocó antes de `GET /tickets/{ticket_id}` deliberadamente: FastAPI resuelve
+  rutas en orden de declaración, así que `/tickets/table` debía quedar antes del
+  path param para no ser interpretado como `ticket_id="table"`
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, app/main.py, DEV_LOG.md
+Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+Verificación manual: `curl /tickets/table` → 200 HTML (tabla, sin <html>);
+`curl /tickets/table?status=open` → 200 HTML filtrado; `curl /tickets` → sigue JSON
+
+[2026-06-30 13:00] Frontend paso 3: crear GET /
+
+Solicitado: Ejecutar el paso 3 de SPEC_FRONTEND_PLAN.md: crear el endpoint GET /
+que renderiza templates/index.html con los tickets iniciales.
+
+Implementado:
+- Añadido `Request` al import de fastapi en app/main.py
+- Añadido endpoint `GET /` (función `index`) que reutiliza `_query_tickets(session)`
+  sin filtros y renderiza `templates/index.html` con `{"request": request, "tickets":
+  tickets}` vía `templates.TemplateResponse`
+- No se tocó templates/index.html ni templates/_tickets_table.html (eso son los
+  pasos 6 y 7); el template aún muestra el TODO original
+
+Decisiones:
+- `GET /` se colocó como primer endpoint (antes de `/health`) por ser la página
+  principal de la app
+- Se reutiliza `_query_tickets` del paso 2 en vez de duplicar la query
+
+Archivos tocados: SPEC_FRONTEND_PLAN.md, app/main.py, DEV_LOG.md
+Tests: 10/10 ✅ (pytest -q), ruff check . ✅
+Verificación manual: `curl http://localhost:8123/` → 200 HTML con <title>TriageBot</title>;
+`curl http://localhost:8123/tickets` → 200 JSON sin cambios
+
 [2026-06-30 12:45] Frontend paso 2: extraer lógica de filtrado reutilizable
 
 Solicitado: Ejecutar el paso 2 de SPEC_FRONTEND_PLAN.md: extraer la query de

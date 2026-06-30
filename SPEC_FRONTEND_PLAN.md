@@ -37,16 +37,16 @@ No se toca: `tests/test_acceptance.py`, `app/models.py`, `app/db.py`,
   en una función común (p. ej. `_query_tickets(...)`) y hacer que `list_tickets`
   la use.
 
-- [ ] **3. Crear `GET /`**
+- [x] **3. Crear `GET /`**
   Renderiza `templates/index.html` con `{"request": request, "tickets": tickets}`
   (sin filtrar, usando la función del paso 2). No toca `GET /tickets`.
 
-- [ ] **4. Crear `GET /tickets/table`**
+- [x] **4. Crear `GET /tickets/table`**
   Acepta `category`, `priority`, `status` como query params opcionales, reutiliza
   la función del paso 2, devuelve solo `templates/_tickets_table.html` (fragmento,
   sin `<html>`).
 
-- [ ] **5. Crear `POST /tickets/form`**
+- [x] **5. Crear `POST /tickets/form`**
   Acepta `title` y `description` vía `Form(...)`. Reutiliza la misma lógica de
   creación que `POST /tickets` (clasificación + fallback + guardado, extraída a
   función auxiliar). Aplica las mismas validaciones que el API (`title`/`description`
