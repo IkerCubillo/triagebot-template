@@ -1,5 +1,18 @@
 # DEV_LOG
 
+[2026-06-30 10:24] Test adicional: PATCH /tickets/{id} rechaza status inválido
+
+Solicitado: Crear un test propio que verifique que PATCH /tickets/{id} devuelve 422 cuando se envía un status fuera de ALLOWED_STATUSES.
+
+Implementado:
+- Creado tests/test_extra_validation.py con test_patch_ticket_rejects_invalid_status: crea un ticket vía POST /tickets (mockeando app.classifier.classify_ticket), luego hace PATCH con {"status": "invalid_status"} y comprueba status_code == 422.
+
+Decisiones:
+- Reutilizado el mismo patrón que tests/test_acceptance.py (fixture client con DATABASE_URL temporal vía tmp_path/monkeypatch, y mock de classify_ticket) para mantener consistencia de estilo sin tocar test_acceptance.py.
+- No se modificó app/main.py: el endpoint update_ticket ya valida manualmente status contra ALLOWED_STATUSES y lanza HTTPException(422), así que el comportamiento esperado ya existía.
+
+Archivos tocados: tests/test_extra_validation.py
+Tests: 6/6 ✅
 [2026-06-30 11:30] Verificación CI + nuevos tests de endpoints
 
 Solicitado: Comprobar que el workflow de CI ejecuta lint + tests en cada push/PR y añadir tests para endpoints no cubiertos en test_acceptance.py.
