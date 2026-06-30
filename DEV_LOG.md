@@ -13,6 +13,25 @@ Decisiones:
 
 Archivos tocados: tests/test_extra_validation.py
 Tests: 6/6 ✅
+[2026-06-30 11:30] Verificación CI + nuevos tests de endpoints
+
+Solicitado: Comprobar que el workflow de CI ejecuta lint + tests en cada push/PR y añadir tests para endpoints no cubiertos en test_acceptance.py.
+
+Implementado:
+- Verificado que .github/workflows/ci.yml ya es correcto (lint + tests en push y PR a main) — sin cambios
+- Añadidos 4 tests nuevos en tests/test_acceptance.py:
+  - test_get_ticket_by_id: GET /tickets/{id} happy path
+  - test_get_ticket_by_id_not_found: GET /tickets/99999 devuelve 404
+  - test_patch_ticket_not_found: PATCH /tickets/99999 devuelve 404
+  - test_post_ticket_missing_required_fields: POST sin title, sin description, cuerpo vacío devuelven 422
+
+Decisiones:
+- Se añadieron directamente en test_acceptance.py en lugar de un archivo nuevo porque el usuario lo indicó explícitamente (anula la regla del taller)
+- Los tests siguen el patrón exacto del archivo: fixture client con DB temporal, monkeypatch del clasificador donde se necesita
+- test_patch_ticket_not_found y test_get_ticket_by_id_not_found no necesitan monkeypatch porque no crean tickets
+
+Archivos tocados: tests/test_acceptance.py
+Tests: 9/9 ✅
 
 [2026-06-30 07:45] Cargar OPENROUTER_API_KEY desde .env al arrancar la app
 
