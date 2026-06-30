@@ -1,5 +1,22 @@
 # DEV_LOG
 
+[2026-06-30 07:45] Cargar OPENROUTER_API_KEY desde .env al arrancar la app
+
+Solicitado: Investigar por qué POST /tickets siempre devolvía FALLBACK_CLASSIFICATION (category=question, priority=P3, tags=[]) en vez de la clasificación real del LLM.
+
+Implementado:
+- Diagnóstico: nada llamaba a load_dotenv(), así que OPENROUTER_API_KEY nunca llegaba a os.environ al lanzar uvicorn aunque estuviera definida en .env; classify_ticket entraba siempre en el guard `if not api_key` y devolvía el fallback.
+- Añadido `from dotenv import load_dotenv` y `load_dotenv()` en app/main.py (python-dotenv ya estaba en requirements.txt pero sin usar).
+- Verificado manualmente con curl contra /tickets: la respuesta ahora trae category/priority/tags reales del modelo en vez del fallback.
+
+Decisiones:
+- load_dotenv() se llama en app/main.py (punto de entrada único de la app) en vez de en classifier.py, para que cualquier otra variable de entorno futura (DATABASE_URL, etc.) también se cargue automáticamente al arrancar.
+
+Archivos tocados: app/main.py
+Tests: no se han re-ejecutado en esta tarea (cambio verificado manualmente vía curl, no afecta a tests/test_acceptance.py que mockean classify_ticket)
+
+---
+
 [2026-06-29 13:00] Crear CLASSIFIER_PLAN.md con análisis de mejoras del clasificador
 
 Solicitado: Analizar app/classifier.py y documentar tres opciones de mejora (prompt engineering, parámetros de inferencia, salida estructurada) en CLASSIFIER_PLAN.md.

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
@@ -8,6 +9,8 @@ from sqlmodel import Session, select
 import app.classifier as classifier
 from app.db import get_session, init_db
 from app.models import ALLOWED_PRIORITIES, ALLOWED_STATUSES, Ticket, TicketCreate, TicketResponse
+
+load_dotenv()
 
 
 class TicketUpdate(BaseModel):
