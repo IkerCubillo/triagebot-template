@@ -1,13 +1,14 @@
 from datetime import UTC, datetime
+import os
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import JSON, Column
 from sqlmodel import Field as SQLField
 from sqlmodel import SQLModel
 
-ALLOWED_CATEGORIES = {"bug", "feature_request", "question", "urgent"}
-ALLOWED_PRIORITIES = {"P1", "P2", "P3"}
-ALLOWED_STATUSES = {"open", "in_progress", "closed"}
+ALLOWED_CATEGORIES = set(os.environ.get("ALLOWED_CATEGORIES", "bug,feature_request,question,urgent").split(","))
+ALLOWED_PRIORITIES = set(os.environ.get("ALLOWED_PRIORITIES", "P1,P2,P3").split(","))
+ALLOWED_STATUSES = set(os.environ.get("ALLOWED_STATUSES", "open,in_progress,closed").split(","))
 
 
 class Ticket(SQLModel, table=True):

@@ -1,5 +1,45 @@
 # DEV_LOG
 
+[2026-06-30 HH:MM] Fase A — Prompt engineering: separación system/user + few-shot
+
+Solicitado: Aplicar la Opción A de CLASSIFIER_PLAN.md: extraer instrucciones a SYSTEM_PROMPT con role system, separar el mensaje de usuario, e incluir 3 ejemplos few-shot.
+
+Implementado:
+- Añadida constante de módulo SYSTEM_PROMPT construida con f-string: las listas de valores válidos se generan dinámicamente desde ALLOWED_CATEGORIES y ALLOWED_PRIORITIES (sin duplicar los enums)
+- El prompt incluye formato de salida esperado, fallback explícito y 3 ejemplos few-shot (urgent/P1, feature_request/P2, question/P3) tomados de CLASSIFIER_PLAN.md
+- Dentro de classify_ticket, el prompt monolítico se reemplaza por user_prompt = f"Título: {title}\nDescripción: {description}"
+- messages pasa a tener dos roles: [{"role":"system","content":SYSTEM_PROMPT}, {"role":"user","content":user_prompt}]
+
+Decisiones:
+- SYSTEM_PROMPT como f-string (no string literal) para que sorted(ALLOWED_CATEGORIES) y sorted(ALLOWED_PRIORITIES) se evalúen al importar el módulo; si los enums cambian en models.py, el prompt se actualiza automáticamente
+- Las llaves literales del JSON de ejemplo se escapan como {{ }} para no colisionar con la interpolación del f-string
+- sorted() en las listas de enums para orden determinista en el prompt
+
+Archivos tocados: app/classifier.py
+Tests: 5/5 ✅
+
+[2026-06-30 HH:MM] Fase B — Parámetros de inferencia via variables de entorno
+
+Solicitado: Aplicar la Opción B de CLASSIFIER_PLAN.md: añadir temperature, max_tokens y seed al clasificador, haciéndolos configurables via env vars.
+
+Implementado:
+- Añadidas constantes de módulo en app/classifier.py: MODEL, TEMPERATURE, MAX_TOKENS, SEED leídas desde env vars con defaults
+- MODEL = os.environ.get("CLASSIFIER_MODEL", "openai/gpt-oss-120b")
+- TEMPERATURE = float(os.environ.get("CLASSIFIER_TEMPERATURE", "0.0"))
+- MAX_TOKENS = int(os.environ.get("CLASSIFIER_MAX_TOKENS", "150"))
+- SEED = int(os.environ.get("CLASSIFIER_SEED", "42"))
+- Actualizado chat.completions.create para usar las constantes en lugar de valores hardcodeados
+- Documentadas las 4 nuevas variables en la tabla de Variables de entorno de CLAUDE.md
+
+Decisiones:
+- Constantes a nivel de módulo (no dentro de la función) para que el valor se resuelva una sola vez al importar el módulo, no en cada llamada
+- DEFAULT temperature=0.0 para maximizar determinismo en clasificación categórica
+- DEFAULT max_tokens=150 suficiente para el JSON máximo (~100 tokens con 5 tags de 30 chars); reduce coste y evita respuestas largas con texto extra
+- seed=42 mejora trazabilidad aunque OpenRouter no garantiza reproducibilidad para modelos open-source
+
+Archivos tocados: app/classifier.py, CLAUDE.md
+Tests: 5/5 ✅
+
 [2026-06-29 13:00] Crear CLASSIFIER_PLAN.md con análisis de mejoras del clasificador
 
 Solicitado: Analizar app/classifier.py y documentar tres opciones de mejora (prompt engineering, parámetros de inferencia, salida estructurada) en CLASSIFIER_PLAN.md.

@@ -79,10 +79,14 @@ No pidas confirmación para escribir DEV_LOG.md: es siempre silencioso.
 
 ## Variables de entorno
 
-| Variable | Uso |
-|----------|-----|
-| `OPENROUTER_API_KEY` | API key de OpenRouter para el clasificador |
-| `DATABASE_URL` | Ruta SQLite — los tests inyectan una DB temporal vía monkeypatch |
+| Variable | Default | Uso |
+|----------|---------|-----|
+| `OPENROUTER_API_KEY` | — | API key de OpenRouter para el clasificador |
+| `DATABASE_URL` | `triagebot.db` | Ruta SQLite — los tests inyectan una DB temporal vía monkeypatch |
+| `CLASSIFIER_MODEL` | `openai/gpt-oss-120b` | Nombre del modelo LLM en OpenRouter |
+| `CLASSIFIER_TEMPERATURE` | `0.0` | Temperatura de inferencia (float) |
+| `CLASSIFIER_MAX_TOKENS` | `150` | Tokens máximos de la respuesta del clasificador (int) |
+| `CLASSIFIER_SEED` | `42` | Semilla de reproducibilidad (int; no garantizada por OpenRouter en modelos open-source) |
 
 ## Tests de aceptación
 
