@@ -1,5 +1,6 @@
 # DEV_LOG
 
+<<<<<<< HEAD
 [2026-06-30 15:00] Seed automático de tickets desde seed_tickets.json
 
 Solicitado: Cargar todos los tickets de seed_tickets.json al arrancar la app,
@@ -27,6 +28,43 @@ Decisiones:
   ningún ticket de seed coincide con los filtros específicos que usan los tests
 
 Archivos tocados: app/db.py, app/main.py
+=======
+[2026-06-30 17:30] Nuevo endpoint GET /tickets/stats
+
+Solicitado: Añadir endpoint JSON que devuelva conteos de tickets por categoría, prioridad y estado.
+
+Implementado:
+- Añadido modelo `TicketStats` (Pydantic) en `app/models.py` con tres campos `dict[str, int]`
+- Importados `ALLOWED_CATEGORIES` y `TicketStats` en `app/main.py`
+- Registrado `GET /tickets/stats` antes de `GET /tickets/{ticket_id}` para que la ruta estática no sea capturada por el parámetro dinámico
+- Los conteos se inicializan a 0 para todos los valores de cada enum, garantizando respuesta estable aunque no haya tickets de algún tipo
+
+Decisiones:
+- El endpoint se coloca ANTES de `GET /tickets/{ticket_id}` porque FastAPI resuelve rutas por orden de registro y "stats" sería interpretado como un ticket_id (int) en caso contrario
+- Se inicializan todos los enum-values a 0 para que la forma de la respuesta sea siempre predecible
+
+Archivos tocados: app/models.py, app/main.py
+Tests: 10/10 ✅
+
+[2026-06-30 16:00] Añadir técnicos/responsables a tickets
+
+Solicitado: Ampliar el modelo de datos con técnicos (uno o varios por ticket), filtrado por técnico en el tablero, selector de técnico activo en el header, gestión de técnicos desde la UI y endpoints de API.
+
+Implementado:
+- `app/models.py`: nuevos modelos `Technician` (tabla SQLite), `TicketTechnician` (tabla de enlace many-to-many), `TechnicianCreate`, `TechnicianResponse`; `TicketCreate` acepta `technician_ids: list[int] = []` (opcional, retrocompatible); `TicketResponse` incluye `technician_ids: list[int] = []`.
+- `app/main.py`: helpers `_get_technician_ids`, `_set_technicians`, `_build_ticket_technicians`, `_ticket_to_response`; `_create_ticket` asigna técnicos tras el commit; `_query_tickets` acepta `technician_id` con join a `TicketTechnician`; `TicketUpdate` acepta `technician_ids`; endpoints JSON actualizados a `_ticket_to_response`; nuevos endpoints `POST /technicians` (JSON), `GET /technicians` (JSON), `POST /technicians/form` (HTMX).
+- `templates/index.html`: selector "Técnico activo" en header top-right (incluido en `#ticket-filters`, filtra tabla al cambiar); multi-select de responsables en formulario de creación; card "Gestión de técnicos" con formulario HTMX para añadir técnicos y lista en vivo.
+- `templates/_tickets_table.html`: columna "Responsables" con chips indigo por técnico asignado; colspan 7→8.
+- `templates/_technicians_list.html`: nuevo partial para lista de técnicos (usado por HTMX en la sección de gestión).
+
+Decisiones:
+- Many-to-many via tabla enlace (`TicketTechnician`) en lugar de JSON array en el ticket, para mantener integridad referencial.
+- `technician_ids` opcional con default `[]` en `TicketCreate` y `TicketResponse` para no romper ningún test existente.
+- `_build_ticket_technicians` usa exactamente 2 queries para cualquier número de tickets (eficiencia).
+- Selector de técnico vinculado al formulario `#ticket-filters` con `form="ticket-filters"` para que `hx-include="#ticket-filters"` lo capture automáticamente sin duplicar lógica HTMX.
+
+Archivos tocados: app/models.py, app/main.py, templates/index.html, templates/_tickets_table.html, templates/_technicians_list.html (nuevo)
+>>>>>>> 791a6770eb973c9643a4fc767a67b933455acaf6
 Tests: 10/10 ✅
 
 [2026-06-30 14:10] Frontend paso 8: accesibilidad mínima (auditoría)

@@ -9,9 +9,37 @@
 </head>
 <body class="bg-slate-50 text-slate-900">
   <main class="mx-auto max-w-6xl p-6">
-    <h1 class="text-3xl font-bold">TriageBot</h1>
-    <p class="mt-2 text-slate-600">Tablero de incidencias con clasificación automática por IA.</p>
 
+    <!-- Header -->
+    <div class="flex items-start justify-between">
+      <div>
+        <h1 class="text-3xl font-bold">TriageBot</h1>
+        <p class="mt-1 text-slate-600">Tablero de incidencias con clasificación automática por IA.</p>
+      </div>
+      <!-- Técnico activo (top-right) -->
+      <div class="flex flex-col items-end gap-1">
+        <label for="tech-selector" class="text-xs font-medium text-slate-500 uppercase tracking-wide">Técnico activo</label>
+        <select
+          id="tech-selector"
+          name="technician_id"
+          form="ticket-filters"
+          hx-get="/tickets/table"
+          hx-trigger="change"
+          hx-include="#ticket-filters"
+          hx-target="#tickets-table"
+          hx-swap="innerHTML"
+          hx-indicator="#table-loading"
+          class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-slate-500 focus:outline-none"
+        >
+          <option value="">Todos los técnicos</option>
+          {% for t in all_technicians %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Crear ticket -->
     <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 class="text-lg font-semibold">Crear ticket</h2>
       <form
@@ -36,6 +64,25 @@
             class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           ></textarea>
         </div>
+        {% if all_technicians %}
+        <div>
+          <label for="technician_ids" class="block text-sm font-medium text-slate-700">Responsables</label>
+          <select
+            id="technician_ids" name="technician_ids" multiple
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            style="min-height:4rem"
+          >
+            {% for t in all_technicians %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-xs text-slate-400">Ctrl+clic (o Cmd+clic) para seleccionar varios.</p>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-400">
+          Aún no hay técnicos. Añade uno en la sección "Gestión de técnicos" más abajo para poder asignar responsables.
+        </p>
+        {% endif %}
         <div class="text-right">
           <button type="submit" class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
             Crear ticket
@@ -44,6 +91,7 @@
       </form>
     </section>
 
+    <!-- Filtros -->
     <section class="mt-6">
       <form id="ticket-filters" class="flex flex-wrap items-end gap-3">
         <div>
@@ -100,11 +148,51 @@
       </form>
     </section>
 
+    <!-- Tablero -->
     <section class="mt-4">
       <div id="tickets-table">
         {% include "_tickets_table.html" %}
       </div>
     </section>
+
+    <!-- Gestión de técnicos -->
+    <section class="mt-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="text-lg font-semibold">Gestión de técnicos</h2>
+      <p class="mt-1 text-sm text-slate-500">Añade los técnicos que pueden ser asignados a tickets.</p>
+
+      <form
+        hx-post="/technicians/form"
+        hx-target="#technicians-list"
+        hx-swap="innerHTML"
+        hx-on::after-request="this.reset()"
+        class="mt-4 flex flex-wrap items-end gap-3"
+      >
+        <div>
+          <label for="tech-name" class="block text-sm font-medium text-slate-700">Nombre</label>
+          <input
+            id="tech-name" name="name" type="text" required maxlength="100"
+            placeholder="Ej: Ana García"
+            class="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          >
+        </div>
+        <div>
+          <label for="tech-email" class="block text-sm font-medium text-slate-700">Email <span class="text-slate-400">(opcional)</span></label>
+          <input
+            id="tech-email" name="email" type="email"
+            placeholder="ana@empresa.com"
+            class="mt-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          >
+        </div>
+        <button type="submit" class="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600">
+          Añadir técnico
+        </button>
+      </form>
+
+      <div id="technicians-list" class="mt-4">
+        {% include "_technicians_list.html" %}
+      </div>
+    </section>
+
   </main>
 </body>
 </html>
