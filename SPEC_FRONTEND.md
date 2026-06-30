@@ -25,6 +25,50 @@ El objetivo de este SPEC es construir un **frontend mínimo, usable y presentabl
 
 ---
 
+## 0.1 Estado actual de templates
+
+La carpeta `templates/` **ya existe** y contiene estos archivos base:
+
+```text
+templates/
+├── index.html
+└── _tickets_table.html
+```
+
+Por tanto, **no hay que crear una arquitectura nueva de templates desde cero**. La tarea principal es completar los archivos existentes.
+
+### `templates/index.html` existente
+
+Este archivo ya contiene:
+
+- estructura HTML base;
+- idioma `lang="es"`;
+- título `TriageBot`;
+- Tailwind CSS cargado por CDN;
+- HTMX cargado por CDN;
+- cabecera inicial de la app;
+- un TODO para añadir formulario, filtros y tabla HTMX.
+
+Debe completarse aquí la página principal.
+
+### `templates/_tickets_table.html` existente
+
+Este archivo ya contiene una tabla base con columnas:
+
+- `ID`
+- `Título`
+- `Categoría`
+- `Prioridad`
+- `Tags`
+- `Estado`
+- `Creado`
+
+Y contiene un TODO dentro del `<tbody>` para renderizar tickets con Jinja2.
+
+Debe completarse aquí el renderizado del tablero.
+
+---
+
 ## 1. Regla principal para Claude Code
 
 Antes de tocar código, Claude Code debe hacer un plan.
@@ -38,6 +82,7 @@ Restricciones:
 - No modifiques tests/test_acceptance.py.
 - No rompas los endpoints JSON existentes.
 - No cambies el stack.
+- Usa los templates existentes: templates/index.html y templates/_tickets_table.html.
 - Usa Jinja2 templates.
 - Usa HTMX + Tailwind por CDN.
 - No metas HTML grande como strings en app/main.py.
@@ -92,7 +137,7 @@ El formulario debe enviar los datos mediante HTMX y refrescar el tablero sin rec
 
 ### 3.2 Tablero con lista de tickets
 
-Debe mostrar los tickets en una tabla o tablero equivalente.
+Debe mostrar los tickets en una tabla visual.
 
 Campos obligatorios visibles:
 
@@ -152,7 +197,7 @@ Endpoints recomendados para frontend:
 | Endpoint | Uso | Respuesta |
 |---|---|---|
 | `GET /` | Página principal completa | HTML |
-| `GET /tickets/board` | Fragmento del tablero filtrado | HTML parcial |
+| `GET /tickets/table` | Fragmento de tabla filtrada | HTML parcial |
 | `POST /tickets/form` | Crear ticket desde formulario HTMX | HTML parcial actualizado |
 
 Los endpoints JSON existentes deben seguir funcionando como antes.
@@ -165,40 +210,208 @@ Pero para evitar romper tests, la opción más clara es usar endpoints HTMX sepa
 
 ---
 
-## 5. Arquitectura de templates
+## 5. Arquitectura de templates actualizada
 
 Usar `Jinja2Templates`.
 
-Estructura recomendada:
+La estructura real del proyecto ya es:
 
 ```text
 templates/
-  index.html
-  partials/
-    tickets_board.html
+├── index.html
+└── _tickets_table.html
 ```
 
-Opcional:
+No crear una carpeta `partials/` nueva salvo que haya una razón fuerte. Para este Lab, es suficiente completar los dos templates existentes.
+
+### 5.1 `templates/index.html`
+
+Responsabilidad: página completa servida por `GET /`.
+
+Debe contener:
+
+- cabecera de la app;
+- formulario para crear tickets;
+- filtros por `category`, `priority` y `status`;
+- contenedor del tablero;
+- inclusión/renderizado de `_tickets_table.html`.
+
+Este archivo ya carga Tailwind CSS y HTMX por CDN. Mantener ese enfoque.
+
+No añadir:
+
+- React;
+- Vite;
+- Webpack;
+- npm;
+- build tools.
+
+Ejemplo conceptual de contenedor:
+
+```html
+<div id="tickets-table">
+  {% include "_tickets_table.html" %}
+</div>
+```
+
+El formulario debe apuntar a ese contenedor:
+
+```html
+<form
+  hx-post="/tickets/form"
+  hx-target="#tickets-table"
+  hx-swap="innerHTML"
+>
+  <!-- title + description + botón -->
+</form>
+```
+
+Los filtros también deben actualizar ese mismo contenedor:
+
+```html
+<form id="ticket-filters">
+  <select
+    name="category"
+    hx-get="/tickets/table"
+    hx-target="#tickets-table"
+    hx-trigger="change"
+    hx-include="#ticket-filters"
+    hx-swap="innerHTML"
+  >
+    <!-- opciones -->
+  </select>
+</form>
+```
+
+El mismo patrón aplica a `priority` y `status`.
+
+### 5.2 `templates/_tickets_table.html`
+
+Responsabilidad: partial reutilizable de la tabla.
+
+No debe ser una página HTML completa. No debe tener `<html>`, `<head>` ni `<body>`.
+
+Debe renderizar la tabla de tickets usando Jinja2.
+
+Debe mostrar, como mínimo:
+
+- `id`;
+- `title`;
+- `category`;
+- `priority`;
+- `tags`;
+- `status`;
+- `created_at`.
+
+Debe incluir:
+
+- badges visuales para `priority`;
+- color o badge para `category`;
+- badge para `status`;
+- chips para `tags`;
+- estado vacío si no hay tickets.
+
+Ejemplo de estado vacío:
 
 ```text
-templates/
-  partials/
-    ticket_row.html
-    empty_state.html
+Todavía no hay tickets. Crea el primero desde el formulario.
 ```
 
-### Regla
+El archivo ya tiene un `<tbody id="tickets-table-body">`. Completar ese bloque con un loop Jinja2.
 
-No escribir HTML grande como string dentro de `app/main.py`.
+Ejemplo conceptual:
 
-`main.py` debe encargarse de:
+```html
+<tbody id="tickets-table-body">
+  {% if tickets %}
+    {% for ticket in tickets %}
+      <tr>
+        <td>{{ ticket.id }}</td>
+        <td>{{ ticket.title }}</td>
+        <td>{{ ticket.category }}</td>
+        <td>{{ ticket.priority }}</td>
+        <td>
+          {% for tag in ticket.tags %}
+            <span>{{ tag }}</span>
+          {% endfor %}
+        </td>
+        <td>{{ ticket.status }}</td>
+        <td>{{ ticket.created_at }}</td>
+      </tr>
+    {% endfor %}
+  {% else %}
+    <tr>
+      <td colspan="7">Todavía no hay tickets. Crea el primero desde el formulario.</td>
+    </tr>
+  {% endif %}
+</tbody>
+```
 
-- recibir requests;
-- consultar o crear tickets;
-- pasar datos a templates;
-- devolver `TemplateResponse` o `HTMLResponse`.
+### 5.3 No meter HTML grande en `main.py`
 
-Los templates deben encargarse de renderizar la UI.
+`main.py` debe renderizar templates con Jinja2, no construir HTML como strings largos.
+
+Correcto:
+
+```python
+return templates.TemplateResponse(
+    "index.html",
+    {"request": request, "tickets": tickets},
+)
+```
+
+Correcto para el partial:
+
+```python
+return templates.TemplateResponse(
+    "_tickets_table.html",
+    {"request": request, "tickets": tickets},
+)
+```
+
+Incorrecto:
+
+```python
+return HTMLResponse("<html>...</html>")
+```
+
+### 5.4 Separación clara entre API JSON y HTMX
+
+Mantener los endpoints JSON existentes:
+
+```text
+GET /tickets
+POST /tickets
+GET /tickets/{id}
+PATCH /tickets/{id}
+```
+
+Añadir endpoints HTML/HTMX:
+
+```text
+GET /
+GET /tickets/table
+POST /tickets/form
+```
+
+Así se separa claramente:
+
+```text
+API JSON:
+GET /tickets
+POST /tickets
+GET /tickets/{id}
+PATCH /tickets/{id}
+
+HTMX / HTML:
+GET /
+GET /tickets/table
+POST /tickets/form
+```
+
+Punto crítico:
+
+> No cambiar `GET /tickets` para que devuelva HTML, porque actualmente debe devolver JSON para cumplir los tests obligatorios.
 
 ---
 
@@ -215,7 +428,7 @@ Ejemplo conceptual:
 ```html
 <form
   hx-post="/tickets/form"
-  hx-target="#tickets-board"
+  hx-target="#tickets-table"
   hx-swap="innerHTML"
 >
   <input name="title" />
@@ -223,8 +436,8 @@ Ejemplo conceptual:
   <button type="submit">Crear ticket</button>
 </form>
 
-<div id="tickets-board">
-  <!-- aquí se renderiza templates/partials/tickets_board.html -->
+<div id="tickets-table">
+  {% include "_tickets_table.html" %}
 </div>
 ```
 
@@ -241,13 +454,13 @@ Los selects deben actualizar el tablero.
 Ejemplo conceptual:
 
 ```html
-<form id="filters">
+<form id="ticket-filters">
   <select
     name="category"
-    hx-get="/tickets/board"
-    hx-target="#tickets-board"
+    hx-get="/tickets/table"
+    hx-target="#tickets-table"
     hx-trigger="change"
-    hx-include="#filters"
+    hx-include="#ticket-filters"
   >
     <option value="">Todas las categorías</option>
     <option value="bug">Error</option>
@@ -267,10 +480,10 @@ Los endpoints HTMX deben devolver fragmentos HTML, no JSON.
 Ejemplo:
 
 ```text
-GET /tickets/board?category=bug&priority=P1&status=open
+GET /tickets/table?category=bug&priority=P1&status=open
 ```
 
-Debe devolver solo el HTML del tablero, no la página completa.
+Debe devolver solo el HTML de `_tickets_table.html`, no la página completa.
 
 ---
 
@@ -312,7 +525,15 @@ Orden recomendado en la página:
 
 El usuario debe entender en menos de cinco segundos qué puede hacer.
 
-### 7.3 Lenguaje de la interfaz
+### 7.3 Pensar como Marta
+
+Antes de programar, priorizar estas preguntas:
+
+- ¿Qué columna del tablero le importa más? Probablemente prioridad. `P1` debe destacar.
+- ¿Qué filtra primero? Probablemente `status=open`, porque no quiere ver lo cerrado.
+- ¿Qué le frustra? Clics innecesarios. Cada acción importante debe estar a un clic.
+
+### 7.4 Lenguaje de la interfaz
 
 La interfaz debe estar en español porque la demo y el briefing están en español.
 
@@ -340,7 +561,7 @@ Mensajes:
 - `Ticket creado correctamente.`
 - `No se ha podido crear el ticket.`
 
-### 7.4 Traducción visual de enums
+### 7.5 Traducción visual de enums
 
 Los valores internos del backend no deben cambiar, pero la UI puede mostrarlos de forma más humana.
 
@@ -474,19 +695,14 @@ Debe devolver `templates/index.html`.
 
 Debe cargar los tickets iniciales, probablemente sin filtros.
 
-Debe incluir por CDN:
+El template `index.html` ya incluye por CDN:
 
 - HTMX
 - Tailwind CSS
 
-Ejemplo conceptual:
+No duplicar innecesariamente los scripts si ya están en el template.
 
-```html
-<script src="https://unpkg.com/htmx.org@2.0.4"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-```
-
-### 11.2 `GET /tickets/board`
+### 11.2 `GET /tickets/table`
 
 Debe aceptar query params opcionales:
 
@@ -494,7 +710,7 @@ Debe aceptar query params opcionales:
 - `priority`
 - `status`
 
-Debe devolver `templates/partials/tickets_board.html`.
+Debe devolver `templates/_tickets_table.html`.
 
 Debe reutilizar la misma lógica de filtrado que `GET /tickets` o una función común para evitar duplicación innecesaria.
 
@@ -507,7 +723,7 @@ Debe aceptar datos de formulario:
 
 Debe crear un ticket usando la misma lógica que el endpoint JSON.
 
-Después debe devolver el tablero actualizado como HTML parcial.
+Después debe devolver el tablero actualizado como HTML parcial usando `templates/_tickets_table.html`.
 
 Debe aplicar las mismas validaciones que el API:
 
@@ -535,9 +751,12 @@ Si la validación falla, debe devolver un error visual o un fragmento con mensaj
 - No hardcodear respuestas falsas para que la demo parezca funcionar.
 - No llamar al LLM desde el frontend.
 - No commitear `.env`.
+- No crear otra arquitectura de templates si no hace falta.
 
 ### Sí hacer
 
+- Completar `templates/index.html`.
+- Completar `templates/_tickets_table.html`.
 - Usar Jinja2 templates.
 - Usar Tailwind por CDN.
 - Usar HTMX para formulario y filtros.
@@ -578,37 +797,57 @@ Claude Code debe proponer un plan parecido a este antes de implementar.
 
 - Leer `app/main.py`.
 - Leer modelos y funciones existentes para tickets.
+- Leer `templates/index.html`.
+- Leer `templates/_tickets_table.html`.
 - Confirmar cómo se crean, listan y filtran tickets.
 - Confirmar cómo se ejecutan los tests.
 
-### Paso 2 — Añadir templates
+### Paso 2 — Configurar o confirmar Jinja2 en FastAPI
+
+Confirmar que existe `Jinja2Templates(directory="templates")`.
+
+Si no existe, añadirlo en `app/main.py` o en el módulo adecuado.
+
+### Paso 3 — Crear o completar `GET /`
+
+Renderizar `templates/index.html`.
+
+Debe pasar a la plantilla:
+
+- `request`;
+- `tickets` iniciales sin filtros.
+
+### Paso 4 — Completar `templates/index.html`
+
+Añadir:
+
+- card del formulario;
+- filtros;
+- contenedor `<div id="tickets-table">`;
+- `{% include "_tickets_table.html" %}` dentro del contenedor.
+
+### Paso 5 — Completar `templates/_tickets_table.html`
+
+Añadir loop Jinja2 sobre `tickets`.
+
+Renderizar:
+
+- filas de tickets;
+- badges;
+- chips de tags;
+- estado vacío.
+
+### Paso 6 — Crear endpoint de tabla parcial
 
 Crear:
 
 ```text
-templates/index.html
-templates/partials/tickets_board.html
+GET /tickets/table
 ```
 
-### Paso 3 — Configurar Jinja2 en FastAPI
+Debe aplicar filtros y devolver solo `templates/_tickets_table.html`.
 
-Añadir `Jinja2Templates` en `app/main.py` o en el módulo adecuado.
-
-### Paso 4 — Crear `GET /`
-
-Renderizar la página completa.
-
-### Paso 5 — Crear endpoint de tablero parcial
-
-Crear:
-
-```text
-GET /tickets/board
-```
-
-Debe aplicar filtros y devolver solo el fragmento HTML del tablero.
-
-### Paso 6 — Crear endpoint HTMX para formulario
+### Paso 7 — Crear endpoint HTMX para formulario
 
 Crear:
 
@@ -616,24 +855,26 @@ Crear:
 POST /tickets/form
 ```
 
-Debe aceptar `Form(...)`, crear ticket y devolver tablero actualizado.
+Debe aceptar `Form(...)`, crear ticket y devolver `templates/_tickets_table.html` actualizado.
 
-### Paso 7 — Añadir HTMX al HTML
+### Paso 8 — Añadir HTMX al HTML
 
-- `hx-post` en formulario.
-- `hx-get` en filtros.
-- `hx-target="#tickets-board"`.
+- `hx-post="/tickets/form"` en formulario.
+- `hx-get="/tickets/table"` en filtros.
+- `hx-target="#tickets-table"`.
 - `hx-swap="innerHTML"`.
+- `hx-include="#ticket-filters"` en filtros.
 
-### Paso 8 — Mejorar UI visual
+### Paso 9 — Mejorar UI visual
 
 - Tailwind CDN.
 - Cards.
 - Tabla con cabecera clara.
 - Badges.
 - Empty state.
+- Labels en español.
 
-### Paso 9 — Ejecutar checks
+### Paso 10 — Ejecutar checks
 
 Ejecutar:
 
@@ -668,7 +909,7 @@ Causa probable:
 
 Solución:
 
-- Asegurar que existe `<div id="tickets-board">`.
+- Asegurar que existe `<div id="tickets-table">`.
 - Asegurar que el endpoint devuelve HTML parcial.
 - Usar `hx-swap="innerHTML"`.
 
@@ -698,6 +939,17 @@ Solución:
 - Usar traducción visual de enums en templates.
 - No cambiar los valores internos del backend.
 
+### Error 6: se rompe `GET /tickets`
+
+Causa probable:
+
+- Se ha cambiado `GET /tickets` para devolver HTML en lugar de JSON.
+
+Solución:
+
+- Restaurar `GET /tickets` como JSON.
+- Usar `GET /tickets/table` para HTML parcial.
+
 ---
 
 ## 16. Definición final de “hecho”
@@ -724,4 +976,3 @@ ruff check .
 ```
 
 deben pasar correctamente.
-
