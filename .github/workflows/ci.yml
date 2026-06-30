@@ -14,6 +14,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check .env not committed
+        run: |
+          if git ls-files | grep -q '^\.env$'; then
+            echo "ERROR: .env is tracked by git — remove it with: git rm --cached .env"
+            exit 1
+          fi
+          if ! grep -qF '.env' .gitignore; then
+            echo "ERROR: .env is not in .gitignore"
+            exit 1
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

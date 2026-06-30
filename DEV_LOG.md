@@ -1,5 +1,22 @@
 # DEV_LOG
 
+[2026-06-30 11:45] Guardia CI: .env no commiteado
+
+Solicitado: Añadir comprobación en CI o en tests de que .env no se pushea al repositorio.
+
+Implementado:
+- Añadido step "Check .env not committed" en .github/workflows/ci.yml, justo después del checkout y antes de instalar Python
+- El step falla con exit 1 si git ls-files detecta que .env está tracked por git
+- También falla si .env no aparece en .gitignore (segunda línea de defensa)
+
+Decisiones:
+- Se añade en el workflow (no en pytest) porque es una comprobación del estado del repositorio, no del comportamiento de la app; su lugar natural es la capa CI
+- Se coloca antes de Set up Python para que falle rápido sin esperar la instalación de dependencias
+- grep -qF '.env' .gitignore cubre la entrada exacta que ya existe en .gitignore (línea 16)
+
+Archivos tocados: .github/workflows/ci.yml
+Tests: 10/10 ✅
+
 [2026-06-30 10:24] Test adicional: PATCH /tickets/{id} rechaza status inválido
 
 Solicitado: Crear un test propio que verifique que PATCH /tickets/{id} devuelve 422 cuando se envía un status fuera de ALLOWED_STATUSES.
